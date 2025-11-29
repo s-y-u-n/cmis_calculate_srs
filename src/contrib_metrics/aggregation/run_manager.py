@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from itertools import combinations
 from pathlib import Path
 from typing import Any, Mapping
 
 import pandas as pd
+from .axioms import update_sada_counts, update_swimmy_counts
 from ..config_loader import load_config
 from ..indices.banzhaf import compute_banzhaf
 from ..indices.ordinal import (
@@ -311,7 +311,7 @@ def run_from_config(config_path: Path) -> None:
                 }
 
             if swimmy_enabled:
-                _update_swimmy_counts(game, available_rules, swimmy_counts)
+                update_swimmy_counts(game, available_rules, swimmy_counts)
 
             if sada_enabled:
                 # Synergy–Anasy Distinction 用には、rule のサブセットを選べるようにする
@@ -322,7 +322,7 @@ def run_from_config(config_path: Path) -> None:
                         for name, scores in available_rules.items()
                         if name in sada_rule_filter
                     }
-                _update_sada_counts(game, sada_rules, sada_counts)
+                update_sada_counts(game, sada_rules, sada_counts)
 
     result_df = pd.DataFrame(rows)
     interactions_df = pd.DataFrame(interaction_rows)
@@ -393,234 +393,3 @@ def run_from_config(config_path: Path) -> None:
             logger.warning("Visualization failed: %s", exc)
 
     # Swimmy Axiom の集計結果を出力
-    if swimmy_enabled and swimmy_counts:
-        rows_axiom: list[dict[str, Any]] = []
-        for rule_name, cnt in swimmy_counts.items():
-            triggered = cnt.get("triggered", 0)
-            satisfied = cnt.get("satisfied", 0)
-            satisfaction_rate = satisfied / triggered if triggered > 0 else None
-            rows_axiom.append(
-                {
-                    "rule": rule_name,
-                    "triggered_pairs": triggered,
-                    "satisfied_pairs": satisfied,
-                    "satisfaction_rate": satisfaction_rate,
-                }
-            )
-        swimmy_df = pd.DataFrame(rows_axiom)
-        axioms_path = base_dir / "axioms_swimmy.csv"
-        write_table(swimmy_df, axioms_path, fmt=fmt)
-        logger.info("Wrote Swimmy axiom summary to %s", axioms_path)
-
-    if sada_enabled and sada_counts:
-        rows_axiom: list[dict[str, Any]] = []
-        for rule_name, cnt in sada_counts.items():
-            triggered = cnt.get("triggered", 0)
-            satisfied = cnt.get("satisfied", 0)
-            satisfaction_rate = satisfied / triggered if triggered > 0 else None
-            rows_axiom.append(
-                {
-                    "rule": rule_name,
-                    "triggered_pairs": triggered,
-                    "satisfied_pairs": satisfied,
-                    "satisfaction_rate": satisfaction_rate,
-                }
-            )
-        sada_df = pd.DataFrame(rows_axiom)
-        axioms_path = base_dir / "axioms_sada.csv"
-        write_table(sada_df, axioms_path, fmt=fmt)
-        logger.info("Wrote Synergy–Anasy Distinction summary to %s", axioms_path)
-
-
-def _update_swimmy_counts(
-    game: Game,
-    synergy_rules: Mapping[str, Mapping[Coalition, float]],
-    counts: dict[str, dict[str, int]],
-) -> None:
-    """Update Swimmy Axiom satisfaction counts for a single game."""
-    ranks = game.ranks
-    if ranks is None:
-        return
-
-    players = list(game.players)
-
-    # 2 人連立の集合
-    two_sets: list[Coalition] = [
-        frozenset({i, j}) for i, j in combinations(players, 2)
-    ]
-
-    # 比較ヘルパ: 1 if A ≻ B, -1 if A ≺ B, 0 if A ∼ B, None if undefined
-    def cmp_coalitions(A: Coalition, B: Coalition) -> int | None:
-        rA = ranks.get(A)
-        rB = ranks.get(B)
-        if rA is None or rB is None:
-            return None
-        if rA < rB:
-            return 1
-        if rA > rB:
-            return -1
-        return 0
-
-    for S in two_sets:
-        s_list = sorted(S)
-        s1, s2 = s_list[0], s_list[1]
-        for T in two_sets:
-            if T == S:
-                continue
-            t_list = sorted(T)
-            t1, t2 = t_list[0], t_list[1]
-
-            # antecedent を満たすかどうか
-            antecedent_holds = False
-
-            for pi in [(t1, t2), (t2, t1)]:
-                t1p, t2p = pi
-                c1 = cmp_coalitions(frozenset({s1}), frozenset({t1p}))
-                c2 = cmp_coalitions(frozenset({s2}), frozenset({t2p}))
-                cS = cmp_coalitions(S, T)
-                if c1 is None or c2 is None or cS is None:
-                    continue
-
-                ge1 = c1 in (0, 1)  # {s1} ≽ {pi(t1)}
-                ge2 = c2 in (0, 1)  # {s2} ≽ {pi(t2)}
-                S_pre_T = cS in (0, -1)  # S \precsim T
-                strict = (c1 == 1) or (c2 == 1) or (cS == -1)
-
-                if ge1 and ge2 and S_pre_T and strict:
-                    antecedent_holds = True
-                    break
-
-            if not antecedent_holds:
-                continue
-
-            for rule_name, scores in synergy_rules.items():
-                vS = scores.get(S)
-                vT = scores.get(T)
-                if vS is None or vT is None:
-                    continue
-
-                # 初期化
-                if rule_name not in counts:
-                    counts[rule_name] = {"triggered": 0, "satisfied": 0}
-
-                counts[rule_name]["triggered"] += 1
-
-                # rule_name に応じて「T が S より良い」の判定方法を変える
-                if rule_name.endswith("_rank"):
-                    # rank は小さいほど良い
-                    satisfied = vT < vS
-                else:
-                    # スコアは大きいほど良い
-                    satisfied = vT > vS
-
-                if satisfied:
-                    counts[rule_name]["satisfied"] += 1
-
-
-def _update_sada_counts(
-    game: Game,
-    synergy_rules: Mapping[str, Mapping[Coalition, float]],
-    counts: dict[str, dict[str, int]],
-) -> None:
-    """Update Synergy–Anasy Distinction counts for a single game."""
-    ranks = game.ranks
-    if ranks is None:
-        return
-
-    players = list(game.players)
-
-    # 2 人連立の集合
-    two_sets: list[Coalition] = [
-        frozenset({i, j}) for i, j in combinations(players, 2)
-    ]
-
-    def _synergy_level(T: Coalition) -> int | None:
-        """Return synergy level in {1,...,6} or None if undefined."""
-        if len(T) != 2:
-            return None
-        i, j = sorted(T)
-        A = frozenset({i})
-        B = frozenset({j})
-        P = frozenset({i, j})
-        rA = ranks.get(A)
-        rB = ranks.get(B)
-        rP = ranks.get(P)
-        if rA is None or rB is None or rP is None:
-            return None
-
-        def succeq(X: Coalition, Y: Coalition) -> bool:
-            return ranks[X] <= ranks[Y]
-
-        def succ(X: Coalition, Y: Coalition) -> bool:
-            return ranks[X] < ranks[Y]
-
-        def sim(X: Coalition, Y: Coalition) -> bool:
-            return ranks[X] == ranks[Y]
-
-        # L3: {i,j} ~ {i} ~ {j}
-        if sim(P, A) and sim(A, B):
-            return 3
-
-        # Patterns with permutation over (i, j)
-        for p1, p2 in ((i, j), (j, i)):
-            C1 = frozenset({p1})
-            C2 = frozenset({p2})
-
-            # L1: exists pi s.t. {pi1,pi2} ≻ {pi1} ∧ {pi1} ≽ {pi2}
-            if succ(P, C1) and succeq(C1, C2):
-                return 1
-
-            # L2: exists pi s.t. {pi1,pi2} ~ {pi1} ∧ {pi1} ≻ {pi2}
-            if sim(P, C1) and succ(C1, C2):
-                return 2
-
-            # L4: exists pi s.t. {pi1} ≻ {pi1,pi2} ∧ {pi1,pi2} ≻ {pi2}
-            if succ(C1, P) and succ(P, C2):
-                return 4
-
-            # L5: exists pi s.t. {pi1} ≻ {pi1,pi2} ∧ {pi1,pi2} ~ {pi2}
-            if succ(C1, P) and sim(P, C2):
-                return 5
-
-            # L6: exists pi s.t. {pi1} ≽ {pi2} ∧ {pi2} ≻ {pi1,pi2}
-            if succeq(C1, C2) and succ(C2, P):
-                return 6
-
-        # If nothing matched, treat as undefined
-        return None
-
-    # Precompute synergy levels for all 2-person coalitions
-    levels: dict[Coalition, int] = {}
-    for T in two_sets:
-        level = _synergy_level(T)
-        if level is not None:
-            levels[T] = level
-
-    # Evaluate axiom: for any distinct T, U, if syn(T) < syn(U) then T PI U
-    for T in two_sets:
-        if T not in levels:
-            continue
-        for U in two_sets:
-            if U == T or U not in levels:
-                continue
-            if levels[T] >= levels[U]:
-                continue
-
-            for rule_name, scores in synergy_rules.items():
-                vT = scores.get(T)
-                vU = scores.get(U)
-                if vT is None or vU is None:
-                    continue
-
-                if rule_name not in counts:
-                    counts[rule_name] = {"triggered": 0, "satisfied": 0}
-
-                counts[rule_name]["triggered"] += 1
-
-                if rule_name.endswith("_rank"):
-                    satisfied = vT < vU  # smaller rank is better
-                else:
-                    satisfied = vT > vU  # larger score is better
-
-                if satisfied:
-                    counts[rule_name]["satisfied"] += 1
