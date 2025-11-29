@@ -38,6 +38,16 @@ indices:
     group_ordinal_banzhaf: true
     group_lex_cel: true
 
+axioms:
+  swimmy:
+    enabled: true
+    # 対象とするシナジー比較ルール名（省略時は利用可能なものすべて）
+    rules:
+      - shapley_interaction
+      - banzhaf_interaction
+      - group_ordinal_banzhaf_score
+      - group_lexcel_rank
+
 output:
   # path を省略または null にすると、
   #   outputs/<input_pathの親ディレクトリ>/<input_stem>_metrics.<format>

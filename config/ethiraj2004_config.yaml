@@ -39,6 +39,15 @@ indices:
     group_ordinal_banzhaf: true
     group_lex_cel: true
 
+axioms:
+  swimmy:
+    enabled: true
+    rules:
+      - shapley_interaction
+      - banzhaf_interaction
+      - group_ordinal_banzhaf_score
+      - group_lexcel_rank
+
 output:
   # null の場合: outputs/<input親>/<input_stem>/ に individuals/coalitions を出力
   path: null

@@ -1,10 +1,10 @@
 from __future__ import annotations
 
+from itertools import combinations, permutations
 from pathlib import Path
 from typing import Any, Mapping
 
 import pandas as pd
-
 from ..config_loader import load_config
 from ..indices.banzhaf import compute_banzhaf
 from ..indices.ordinal import (
@@ -43,6 +43,10 @@ def run_from_config(config_path: Path) -> None:
     input_cfg: Mapping[str, Any] = cfg.get("input", {})
     indices_cfg: Mapping[str, Any] = cfg.get("indices", {})
     output_cfg: Mapping[str, Any] = cfg.get("output", {})
+    axioms_cfg: Mapping[str, Any] = cfg.get("axioms", {})
+    swimmy_cfg: Mapping[str, Any] = axioms_cfg.get("swimmy", {})
+    swimmy_enabled = swimmy_cfg.get("enabled", False)
+    swimmy_rule_filter = swimmy_cfg.get("rules")  # optional list of rule names
 
     df = read_game_table(
         input_cfg["path"],
@@ -89,6 +93,7 @@ def run_from_config(config_path: Path) -> None:
 
     rows: list[dict[str, Any]] = []
     interaction_rows: list[dict[str, Any]] = []
+    swimmy_counts: dict[str, dict[str, int]] = {}
 
     interactions_cfg: Mapping[str, Any] = indices_cfg.get("interactions", {})
     interactions_enabled = interactions_cfg.get("enabled", False)
@@ -274,6 +279,35 @@ def run_from_config(config_path: Path) -> None:
                     }
                 )
 
+        if swimmy_enabled and game.ranks is not None:
+            # 様々なシナジー比較ルールに対して Swimmy Axiom の満足度を集計
+            available_rules: dict[str, dict[Coalition, float]] = {}
+            if shap_int:
+                available_rules["shapley_interaction"] = {
+                    c: float(v) for c, v in shap_int.items()
+                }
+            if banz_int:
+                available_rules["banzhaf_interaction"] = {
+                    c: float(v) for c, v in banz_int.items()
+                }
+            if group_ord:
+                available_rules["group_ordinal_banzhaf_score"] = {
+                    c: float(v) for c, v in group_ord.items()
+                }
+            if group_lex_rank:
+                available_rules["group_lexcel_rank"] = {
+                    c: float(v) for c, v in group_lex_rank.items()
+                }
+
+            if swimmy_rule_filter:
+                available_rules = {
+                    name: scores
+                    for name, scores in available_rules.items()
+                    if name in swimmy_rule_filter
+                }
+
+            _update_swimmy_counts(game, available_rules, swimmy_counts)
+
     result_df = pd.DataFrame(rows)
     interactions_df = pd.DataFrame(interaction_rows)
 
@@ -341,3 +375,108 @@ def run_from_config(config_path: Path) -> None:
                 plot_coalition_values(df, value_col, base_dir, coalition_order=order)
         except Exception as exc:  # noqa: BLE001
             logger.warning("Visualization failed: %s", exc)
+
+    # Swimmy Axiom の集計結果を出力
+    if swimmy_enabled and swimmy_counts:
+        rows_axiom: list[dict[str, Any]] = []
+        for rule_name, cnt in swimmy_counts.items():
+            triggered = cnt.get("triggered", 0)
+            satisfied = cnt.get("satisfied", 0)
+            satisfaction_rate = satisfied / triggered if triggered > 0 else None
+            rows_axiom.append(
+                {
+                    "rule": rule_name,
+                    "triggered_pairs": triggered,
+                    "satisfied_pairs": satisfied,
+                    "satisfaction_rate": satisfaction_rate,
+                }
+            )
+        swimmy_df = pd.DataFrame(rows_axiom)
+        axioms_path = base_dir / "axioms_swimmy.csv"
+        write_table(swimmy_df, axioms_path, fmt=fmt)
+        logger.info("Wrote Swimmy axiom summary to %s", axioms_path)
+
+
+def _update_swimmy_counts(
+    game: Game,
+    synergy_rules: Mapping[str, Mapping[Coalition, float]],
+    counts: dict[str, dict[str, int]],
+) -> None:
+    """Update Swimmy Axiom satisfaction counts for a single game."""
+    ranks = game.ranks
+    if ranks is None:
+        return
+
+    players = list(game.players)
+
+    # 2 人連立の集合
+    two_sets: list[Coalition] = [
+        frozenset({i, j}) for i, j in combinations(players, 2)
+    ]
+
+    # 比較ヘルパ: 1 if A ≻ B, -1 if A ≺ B, 0 if A ∼ B, None if undefined
+    def cmp_coalitions(A: Coalition, B: Coalition) -> int | None:
+        rA = ranks.get(A)
+        rB = ranks.get(B)
+        if rA is None or rB is None:
+            return None
+        if rA < rB:
+            return 1
+        if rA > rB:
+            return -1
+        return 0
+
+    for S in two_sets:
+        s_list = sorted(S)
+        s1, s2 = s_list[0], s_list[1]
+        for T in two_sets:
+            if T == S:
+                continue
+            t_list = sorted(T)
+            t1, t2 = t_list[0], t_list[1]
+
+            # antecedent を満たすかどうか
+            antecedent_holds = False
+
+            for pi in [(t1, t2), (t2, t1)]:
+                t1p, t2p = pi
+                c1 = cmp_coalitions(frozenset({s1}), frozenset({t1p}))
+                c2 = cmp_coalitions(frozenset({s2}), frozenset({t2p}))
+                cS = cmp_coalitions(S, T)
+                if c1 is None or c2 is None or cS is None:
+                    continue
+
+                ge1 = c1 in (0, 1)  # {s1} ≽ {pi(t1)}
+                ge2 = c2 in (0, 1)  # {s2} ≽ {pi(t2)}
+                S_pre_T = cS in (0, -1)  # S \precsim T
+                strict = (c1 == 1) or (c2 == 1) or (cS == -1)
+
+                if ge1 and ge2 and S_pre_T and strict:
+                    antecedent_holds = True
+                    break
+
+            if not antecedent_holds:
+                continue
+
+            for rule_name, scores in synergy_rules.items():
+                vS = scores.get(S)
+                vT = scores.get(T)
+                if vS is None or vT is None:
+                    continue
+
+                # 初期化
+                if rule_name not in counts:
+                    counts[rule_name] = {"triggered": 0, "satisfied": 0}
+
+                counts[rule_name]["triggered"] += 1
+
+                # rule_name に応じて「T が S より良い」の判定方法を変える
+                if rule_name.endswith("_rank"):
+                    # rank は小さいほど良い
+                    satisfied = vT < vS
+                else:
+                    # スコアは大きいほど良い
+                    satisfied = vT > vS
+
+                if satisfied:
+                    counts[rule_name]["satisfied"] += 1

@@ -272,6 +272,20 @@ $$
 
 - 将来の group-value 系指標の雛形を用意している。現時点ではプレースホルダー実装のみ。
 
+## メタ評価（Swimmy Axiom）
+
+上記のようなシナジー比較ルール（Shapley/Banzhaf interaction、Group Ordinal Banzhaf、Group lex-cel）が
+望ましい性質（公理）をどの程度満たしているかを、事後的にチェックするメタ指標も提供している。
+
+現在は Swimmy Axiom を対象としており、2 人連立のペア \((S,T)\) で前件を満たすものに対して、
+各ルール \(R^I\) について後件 \(T P^I_\succsim S\) がどれだけ成立するかを集計する。
+
+- ルールごとに
+  - `triggered_pairs`: Swimmy の前件を満たしたペア数
+  - `satisfied_pairs`: さらに後件も満たしたペア数
+  - `satisfaction_rate`: `satisfied_pairs / triggered_pairs`
+- `run_manager` から `axioms_swimmy.csv` として出力され、シナジー比較ルールのメタ評価に利用できる。
+
 ---
 
 **注:** このファイルは表示用に数式デリミタを `$` / `$$` に統一している。必要があれば、レンダラーに合わせた追加のエスケープや改行（あるいは MathJax の設定）を調整する。

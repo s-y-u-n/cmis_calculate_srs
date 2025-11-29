@@ -1,6 +1,6 @@
 input:
   # 入力ゲームテーブル（必要に応じて *_002, *_003... に差し替え）
-  path: data/game_tables/lazer2007/lazer2007_003.csv
+  path: data/game_tables/lazer2007/lazer2007_001.csv
   format: csv
   game_type: TU
 
@@ -38,6 +38,15 @@ indices:
     banzhaf: true
     group_ordinal_banzhaf: true
     group_lex_cel: true
+
+axioms:
+  swimmy:
+    enabled: true
+    rules:
+      - shapley_interaction
+      - banzhaf_interaction
+      - group_ordinal_banzhaf_score
+      - group_lexcel_rank
 
 output:
   path: null

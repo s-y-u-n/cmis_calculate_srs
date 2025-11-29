@@ -38,6 +38,11 @@ poetry run contrib-metrics compute --config config/example_config.yaml
     を出力する
   - `path` を明示指定した場合は、そのパスをディレクトリとして扱い、
     `individuals.<format>` / `coalitions.<format>` をその中に出力する
+- `axioms`: 公理レベルのメタ評価の設定
+  - `swimmy`:
+    - `enabled`: true のとき Swimmy Axiom に関する満足度を集計
+    - `rules`: 対象とするシナジー比較ルール名のリスト  
+      （例: `shapley_interaction`, `banzhaf_interaction`, `group_ordinal_banzhaf_score`, `group_lexcel_rank`）
 - `logging`: ログ設定ファイル
 
 ## 可視化（デフォルト ON）
@@ -72,3 +77,17 @@ visualization:
 を追加してください。
 
 詳細な項目は `config/example_config.yaml` を参照してください。
+
+## 公理レベルのメタ評価（Swimmy Axiom）
+
+`axioms.swimmy.enabled: true` の場合、各ゲームについて
+
+- 2 人連立のペア \((S,T)\) のうち、Swimmy Axiom の前件を満たすものを「チェック対象」とし、
+- 指定された各シナジー比較ルール（例: Shapley interaction, Banzhaf interaction, Group Ordinal Banzhaf, Group lex-cel）について
+  - `triggered_pairs`: 前件を満たしたペア数
+  - `satisfied_pairs`: さらに後件も満たしたペア数
+  - `satisfaction_rate`: `satisfied_pairs / triggered_pairs`
+
+を集計します。
+
+結果は、ゲームごとの出力ディレクトリに `axioms_swimmy.csv` として保存されます。
