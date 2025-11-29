@@ -73,7 +73,56 @@ $$
 
 ### lex-cel
 
-ランクの層ごとの出現頻度ベクトル $\theta_{\succsim}(i)$ を計算し、辞書式比較で lex-cel 関係を構成する。
+有限集合 $N$ 上の coalitional ranking（全前順序）$\succsim\in\mathcal{R}(F(N))$ を考える。  
+これが誘導する同値類（quotient ranking）を
+
+$$
+\Sigma_1 \succ \Sigma_2 \succ \cdots \succ \Sigma_\ell
+$$
+
+と書く（$\Sigma_1$ が最上位の層）。
+
+各プレイヤー $i\in N$ について、層ごとの出現頻度ベクトルを
+
+$$
+i_k := \bigl|\{\, S \in \Sigma_k \mid i \in S \,\}\bigr|
+\qquad (k = 1,\ldots,\ell),
+$$
+
+$$
+\theta_{\succsim}(i) := (i_1,\ldots,i_\ell)
+$$
+
+と定義する。
+
+このとき lex-cel 解（lexicographic choice by electoral layers）は
+
+$$
+R_{\mathrm{le}} : \mathcal{R}(F(N)) \to \mathcal{B}(N)
+$$
+
+として、すべての $i,j\in N$ について
+
+$$
+i\,R_{\mathrm{le}}(\succsim)\,j
+\Longleftrightarrow
+\theta_{\succsim}(i)\;\ge_{\mathrm{lex}}\;\theta_{\succsim}(j)
+$$
+
+と定義される（$\ge_{\mathrm{lex}}$ は高い層から順に比較する辞書式順序）。
+
+- $I^{\mathrm{le}}_{\succsim}$ : $R_{\mathrm{le}}(\succsim)$ の対称部分（同値関係）
+- $P^{\mathrm{le}}_{\succsim}$ : その非対称部分（厳密優越）
+
+実装では、
+
+- 全ての層 $\Sigma_k$ を rank 値から構成し、
+- 各 $i$ について $\theta_{\succsim}(i)$ を計算したうえで、
+- すべてのペア $(i,j)$ に対して辞書式比較を行い
+  - 厳密優越ペア $(i,j)$ を集合 $P$ に
+  - 同値ペア $\{i,j\}$ を集合 $I$ に
+
+として `LexCelRelation`（`theta`, `P`, `I`）を構成している。
 
 ## Synergy / Anasy
 

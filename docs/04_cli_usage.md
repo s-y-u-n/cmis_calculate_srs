@@ -47,6 +47,8 @@ poetry run contrib-metrics compute --config config/example_config.yaml
 - プレイヤー指標 (`individuals.<format>`) に対して:
   - `individuals_shapley.png`: Shapley 値の棒グラフ
   - `individuals_banzhaf.png`: Banzhaf 値の棒グラフ
+  - `individuals_ordinal_banzhaf_rank.png`: ordinal Banzhaf ランクの棒グラフ
+  - `individuals_lex_cel_rank.png`: lex-cel ランクの棒グラフ
   - `individuals_rank_heatmap.png`:  
     `*_rank` カラム（例: `shapley_rank`, `banzhaf_rank`, `ordinal_banzhaf_rank`, `lex_cel_rank`）同士の
     Spearman 相関行列のヒートマップ（全組み合わせのランキング比較）

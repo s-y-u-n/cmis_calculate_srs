@@ -27,8 +27,49 @@ def plot_individuals(df: pd.DataFrame, out_dir: Path, title_prefix: str = "") ->
         plt.savefig(out_dir / filename)
         plt.close()
 
+    def _bar_plot_rank(column: str, filename: str, ylabel: str) -> None:
+        if column not in df.columns:
+            return
+        values = df[column]
+        if values.empty:
+            return
+        # rank は「小さいほど良い」ので、そのまま棒の高さに使うと
+        # 下に良いプレイヤーが来てしまう。そこで、
+        #   plot_val = max_rank + 1 - rank
+        # として「良いほど棒が高い」ように変換し、
+        # 軸の目盛りは元の rank を逆順で表示する。
+        max_rank = int(values.max())
+        plot_vals = max_rank + 1 - values
+        plt.figure(figsize=(8, 4))
+        plt.bar(players, plot_vals)
+        plt.xlabel("player")
+        plt.ylabel(ylabel)
+        plt.title(f"{title_prefix}{column}")
+        ax = plt.gca()
+        ax.set_ylim(0, max_rank + 1)
+        # 上に rank=1、下に rank=max_rank が来るように目盛りを配置
+        tick_positions = [max_rank + 1 - r for r in range(1, max_rank + 1)]
+        ax.set_yticks(tick_positions)
+        ax.set_yticklabels([str(r) for r in range(1, max_rank + 1)])
+        plt.tight_layout()
+        plt.savefig(out_dir / filename)
+        plt.close()
+
+    # 値ベースの指標
     _bar_plot("shapley", "individuals_shapley.png", "Shapley value")
     _bar_plot("banzhaf", "individuals_banzhaf.png", "Banzhaf value")
+
+    # ランクベースの指標（値を持たない純粋な ordinal 指標のみ）
+    _bar_plot_rank(
+        "ordinal_banzhaf_rank",
+        "individuals_ordinal_banzhaf_rank.png",
+        "Ordinal Banzhaf rank",
+    )
+    _bar_plot_rank(
+        "lex_cel_rank",
+        "individuals_lex_cel_rank.png",
+        "lex-cel rank",
+    )
 
 
 def plot_coalitions(df: pd.DataFrame, out_dir: Path, title_prefix: str = "") -> None:
