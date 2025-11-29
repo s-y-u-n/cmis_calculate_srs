@@ -272,19 +272,36 @@ $$
 
 - 将来の group-value 系指標の雛形を用意している。現時点ではプレースホルダー実装のみ。
 
-## メタ評価（Swimmy Axiom）
+## メタ評価（Swimmy / Synergy–Anasy）
 
 上記のようなシナジー比較ルール（Shapley/Banzhaf interaction、Group Ordinal Banzhaf、Group lex-cel）が
 望ましい性質（公理）をどの程度満たしているかを、事後的にチェックするメタ指標も提供している。
 
-現在は Swimmy Axiom を対象としており、2 人連立のペア \((S,T)\) で前件を満たすものに対して、
-各ルール \(R^I\) について後件 \(T P^I_\succsim S\) がどれだけ成立するかを集計する。
+現在は Swimmy Axiom と Synergy–Anasy Distinction Axiom を対象としている。
+
+### Swimmy Axiom
+
+2 人連立のペア \((S,T)\) で前件を満たすものに対して、各ルール \(R^I\) について後件
+\(T P^I_\succsim S\) がどれだけ成立するかを集計する。
 
 - ルールごとに
   - `triggered_pairs`: Swimmy の前件を満たしたペア数
   - `satisfied_pairs`: さらに後件も満たしたペア数
   - `satisfaction_rate`: `satisfied_pairs / triggered_pairs`
 - `run_manager` から `axioms_swimmy.csv` として出力され、シナジー比較ルールのメタ評価に利用できる。
+
+### Synergy–Anasy Distinction
+
+各 2 人連立 \(T=\{i,j\}\) のシナジーレベル \(\mathrm{syn}_\succeq(T)\in\{1,\ldots,6\}\) を
+序数順位 \(\succeq\) から計算し（Definition: synergy level）、2 つの連立 \(T,U\) に対して
+\(\mathrm{syn}_\succeq(T) < \mathrm{syn}_\succeq(U)\) ならば、interaction 比較ルール \(R^I\) の観点でも
+常に \(T P^I_\succeq U\) が成り立っているかどうかをチェックする。
+
+- ルールごとに
+  - `triggered_pairs`: \(\mathrm{syn}_\succeq(T) < \mathrm{syn}_\succeq(U)\) となるペア数
+  - `satisfied_pairs`: さらに \(T P^I_\succeq U\) も満たすペア数
+  - `satisfaction_rate`: `satisfied_pairs / triggered_pairs`
+- 結果は `axioms_sada.csv` として出力され、synergy/anasy の区別をどの程度守っているかを評価できる。
 
 ---
 

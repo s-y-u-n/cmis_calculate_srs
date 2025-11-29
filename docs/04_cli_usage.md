@@ -43,6 +43,9 @@ poetry run contrib-metrics compute --config config/example_config.yaml
     - `enabled`: true のとき Swimmy Axiom に関する満足度を集計
     - `rules`: 対象とするシナジー比較ルール名のリスト  
       （例: `shapley_interaction`, `banzhaf_interaction`, `group_ordinal_banzhaf_score`, `group_lexcel_rank`）
+  - `sada`:
+    - `enabled`: true のとき Synergy–Anasy Distinction Axiom に関する満足度を集計
+    - `rules`: 対象とするシナジー比較ルール名のリスト（指定しない場合は利用可能なものすべて）
 - `logging`: ログ設定ファイル
 
 ## 可視化（デフォルト ON）
@@ -78,9 +81,9 @@ visualization:
 
 詳細な項目は `config/example_config.yaml` を参照してください。
 
-## 公理レベルのメタ評価（Swimmy Axiom）
+## 公理レベルのメタ評価（Swimmy / Synergy–Anasy）
 
-`axioms.swimmy.enabled: true` の場合、各ゲームについて
+`axioms.swimmy.enabled: true` の場合、各ゲームについて:
 
 - 2 人連立のペア \((S,T)\) のうち、Swimmy Axiom の前件を満たすものを「チェック対象」とし、
 - 指定された各シナジー比較ルール（例: Shapley interaction, Banzhaf interaction, Group Ordinal Banzhaf, Group lex-cel）について
@@ -88,6 +91,13 @@ visualization:
   - `satisfied_pairs`: さらに後件も満たしたペア数
   - `satisfaction_rate`: `satisfied_pairs / triggered_pairs`
 
-を集計します。
+を集計し、ゲームごとの出力ディレクトリに `axioms_swimmy.csv` として保存します。
 
-結果は、ゲームごとの出力ディレクトリに `axioms_swimmy.csv` として保存されます。
+`axioms.sada.enabled: true` の場合、Synergy–Anasy Distinction Axiom についても同様に:
+
+- 各 2 人連立 \(T=\{i,j\}\) のシナジーレベル \(\mathrm{syn}_{\succeq}(T)\in\{1,\ldots,6\}\) を rank から計算し、
+- 2 つの連立 \(T, U\) に対して \(\mathrm{syn}_{\succeq}(T) < \mathrm{syn}_{\succeq}(U)\) であれば
+  指定されたシナジー比較ルール \(R^I\) について `T` が `U` より strictly interaction-better になっているかどうかをチェックし、
+- ルールごとに `triggered_pairs`, `satisfied_pairs`, `satisfaction_rate` を集計します。
+
+結果は `axioms_sada.csv` に出力されます。

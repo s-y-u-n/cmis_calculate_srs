@@ -47,6 +47,13 @@ axioms:
       - banzhaf_interaction
       - group_ordinal_banzhaf_score
       - group_lexcel_rank
+  sada:
+    enabled: true
+    rules:
+      - shapley_interaction
+      - banzhaf_interaction
+      - group_ordinal_banzhaf_score
+      - group_lexcel_rank
 
 output:
   path: null
