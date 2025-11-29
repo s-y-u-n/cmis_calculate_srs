@@ -8,7 +8,11 @@ import pandas as pd
 from ..utils.coalition_encoding import normalize_coalition
 
 
-def read_game_table(path: str | Path, fmt: str | None = None) -> pd.DataFrame:
+def read_game_table(
+    path: str | Path,
+    fmt: str | None = None,
+    coalition_column: str = "coalition",
+) -> pd.DataFrame:
     p = Path(path)
     if fmt is None:
         fmt = p.suffix.lstrip(".").lower()
@@ -21,11 +25,13 @@ def read_game_table(path: str | Path, fmt: str | None = None) -> pd.DataFrame:
         msg = f"Unsupported format: {fmt}"
         raise ValueError(msg)
 
-    if "coalition" not in df.columns:
+    if coalition_column not in df.columns:
         msg = "Input table must contain 'coalition' column."
         raise ValueError(msg)
 
     df = df.copy()
+    if coalition_column != "coalition":
+        df = df.rename(columns={coalition_column: "coalition"})
     df["coalition"] = df["coalition"].map(_normalize_coalition_cell)
     return df
 

@@ -15,6 +15,7 @@ def build_games_from_table(
     game_column: str = "game_id",
     value_column: str = "value",
     rank_column: str = "rank",
+    players_override: Iterable[int] | None = None,
 ) -> List[Game]:
     games: list[Game] = []
 
@@ -22,6 +23,8 @@ def build_games_from_table(
     for _, g in df.groupby(group_cols):
         coalitions: list[Coalition] = list(g["coalition"])
         players = _infer_players_from_coalitions(coalitions)
+        if players_override is not None:
+            players.update(int(p) for p in players_override)
 
         values = {}
         ranks = {}

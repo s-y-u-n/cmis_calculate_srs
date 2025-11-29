@@ -16,7 +16,7 @@ class GameTableRun:
     path: Path
     format: str
     created_at: datetime
-    metadata_path: Path
+    metadata_path: Optional[Path]
 
 
 def _kind_root(root: Path | str, kind: str) -> Path:
@@ -24,12 +24,45 @@ def _kind_root(root: Path | str, kind: str) -> Path:
 
 
 def list_runs(kind: str, root: Path | str = Path("data/game_tables")) -> List[GameTableRun]:
-    """List all registered runs for a given game-table kind."""
+    """List all runs for a given game-table kind.
+
+    サポートするレイアウト:
+    - data/game_tables/<kind>/<kind>_NNN.csv 形式の「生ファイル」
+    - data/game_tables/<kind>/run_NNNN/{game_table.csv, metadata.yaml} 形式の登録済みファイル
+    """
     base = _kind_root(root, kind)
     if not base.exists():
         return []
 
     runs: list[GameTableRun] = []
+
+    # 1) Simple layout: kind/kind_001.csv, kind_002.csv, ...
+    for entry in sorted(base.iterdir()):
+        if not entry.is_file():
+            continue
+        name = entry.name
+        stem = entry.stem
+        if not stem.startswith(f"{kind}_"):
+            continue
+        suffix = stem.split("_", 1)[1]
+        try:
+            run_id = int(suffix)
+        except ValueError:
+            continue
+        fmt = entry.suffix.lstrip(".").lower()
+        created_at = datetime.fromtimestamp(entry.stat().st_mtime, tz=timezone.utc)
+        runs.append(
+            GameTableRun(
+                kind=kind,
+                run_id=run_id,
+                path=entry,
+                format=fmt,
+                created_at=created_at,
+                metadata_path=None,
+            )
+        )
+
+    # 2) Managed layout: kind/run_0001/..., with metadata.yaml
     for entry in sorted(base.iterdir()):
         if not entry.is_dir():
             continue
@@ -53,7 +86,6 @@ def list_runs(kind: str, root: Path | str = Path("data/game_tables")) -> List[Ga
         table_path = entry / filename
 
         created_raw = meta.get("created_at")
-        created_at: datetime
         if isinstance(created_raw, str):
             try:
                 created_at = datetime.fromisoformat(created_raw)
@@ -95,8 +127,9 @@ def register_game_table(
 ) -> GameTableRun:
     """Register a new game table run under a given kind.
 
-    Creates a directory data/game_tables/<kind>/run_xxxx, copies (or links)
-    the source file, and writes metadata.yaml.
+    data/game_tables/<kind>/run_xxxx にディレクトリを作成し、
+    ソースファイルをコピーして metadata.yaml を生成する。
+    既存の簡易レイアウト（<kind>_NNN.csv）とは独立して利用できる。
     """
     root_path = Path(root)
     kind_dir = _kind_root(root_path, kind)
@@ -142,4 +175,3 @@ def register_game_table(
         created_at=created_at,
         metadata_path=metadata_path,
     )
-

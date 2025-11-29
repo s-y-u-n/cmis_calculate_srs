@@ -13,7 +13,36 @@
 
 ## ディレクトリ構造
 
-標準的な配置は次のようになります。
+### このリポジトリでの実データ配置
+
+`data/game_tables` には、別リポジトリで生成されたゲームテーブルが
+「種別ごとのディレクトリ + `<kind>_NNN.csv`」という構造で配置されています。
+
+```text
+data/
+  game_tables/
+    ethiraj2004/
+      ethiraj2004_001.csv
+      ethiraj2004_002.csv
+      ethiraj2004_003.csv
+    lazer2007/
+      lazer2007_001.csv
+      lazer2007_002.csv
+      ...
+    levinthal1997/
+      levinthal1997_001.csv
+      levinthal1997_002.csv
+      ...
+```
+
+- `game_tables/` 以下の 1 階層目のディレクトリ名（例: `ethiraj2004`）を
+  **ゲームテーブル種別（kind）** と呼びます。
+- その配下の `<kind>_NNN.csv` を「ラン番号 NNN の実験結果」とみなし、
+  `GameTableRun.run_id` と対応づけて扱います。
+
+### 拡張: 管理用ディレクトリとメタデータ
+
+必要に応じて、よりリッチな管理のために
 
 ```text
 data/
@@ -25,22 +54,14 @@ data/
       run_0002/
         game_table.csv
         metadata.yaml
-    nk_model/
-      run_0001/
-        game_table.parquet
-        metadata.yaml
-    port_logistics/
-      run_0001/
-        game_table.csv
-        metadata.yaml
 ```
 
-- `game_tables/` 以下の 1 階層目のディレクトリ名（例: `buldyrev`）を **ゲームテーブル種別（kind）** と呼びます。
-- その配下に `run_0001`, `run_0002`, ... のように **ラン番号付きディレクトリ** を作成します。
-- 各ランには:
-  - 実際のゲームテーブル (`game_table.csv` など)
-  - メタデータ (`metadata.yaml`)
-  を保存します。
+のように `run_0001`, `run_0002`, ... の下に
+
+- 実際のゲームテーブル (`game_table.csv` など)
+- メタデータ (`metadata.yaml`)
+
+を置く構造もサポートしています。
 
 ## メタデータ仕様
 
@@ -84,10 +105,12 @@ class GameTableRun:
     path: Path
     format: str
     created_at: datetime
-    metadata_path: Path
+    metadata_path: Path | None
 ```
 
 - 1 つのランを表現する軽量オブジェクトです。
+  - `metadata_path` は、管理用レイアウト（`run_0001` 配下に metadata.yaml がある場合）のみに設定され、
+    `<kind>_NNN.csv` のような生ファイルの場合は `None` になります。
 
 ### `register_game_table`
 
@@ -114,19 +137,20 @@ print(run.run_id, run.path)
 ```python
 from contrib_metrics.io.game_table_manager import list_runs
 
-runs = list_runs(kind="buldyrev", root="data/game_tables")
+runs = list_runs(kind="ethiraj2004", root="data/game_tables")
 for r in runs:
     print(r.run_id, r.path)
 ```
 
 - 指定した `kind` の全ランを `run_id` 昇順で返します。
+  - `ethiraj2004_001.csv` のような名前のファイルも自動的に検出して `run_id=1` として扱います。
 
 ### `get_latest_run`
 
 ```python
 from contrib_metrics.io.game_table_manager import get_latest_run
 
-latest = get_latest_run(kind="buldyrev", root="data/game_tables")
+latest = get_latest_run(kind="ethiraj2004", root="data/game_tables")
 if latest is not None:
     print("latest run:", latest.run_id, latest.path)
 ```
@@ -137,12 +161,24 @@ if latest is not None:
 
 他リポジトリやノートブック側でゲームテーブルを生成した後:
 
-1. `register_game_table` で `data/game_tables/<kind>/run_xxxx` に登録
-2. `GameTableRun.path` を `config/example_config.yaml` の `input.path` に設定
-3. `poetry run contrib-metrics compute --config ...` で貢献度指標を計算
+1. 既存の `<kind>_NNN.csv` をそのまま `GameTableRun` として扱う場合:
+
+   ```python
+   from contrib_metrics.io.game_table_manager import get_latest_run
+
+   latest = get_latest_run("ethiraj2004", root="data/game_tables")
+   if latest is not None:
+       print(latest.run_id, latest.path)
+       # latest.path を config の input.path に指定して計算
+   ```
+
+2. 追加でメタデータ付きの管理レイアウトを使いたい場合:
+
+   - `register_game_table` で `data/game_tables/<kind>/run_xxxx` に登録
+   - `GameTableRun.path` を `config/example_config.yaml` の `input.path` に設定
+   - `poetry run contrib-metrics compute --config ...` で貢献度指標を計算
 
 というフローを想定しています。
 
 CLI からの直接操作（例: `contrib-metrics table-register ...`）は必要になった段階で追加できるよう、
 現在は Python API とディレクトリレイアウトの仕様にフォーカスしています。
-

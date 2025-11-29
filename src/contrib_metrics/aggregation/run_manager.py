@@ -24,6 +24,7 @@ from ..io.writers import write_table
 from ..model.game_types import GameType
 from ..model.transforms import add_rank_from_value, build_games_from_table
 from ..utils.logging_utils import get_logger
+from .visualization import plot_coalitions, plot_individuals, plot_rank_heatmap
 
 logger = get_logger(__name__)
 
@@ -34,8 +35,19 @@ def run_from_config(config_path: Path) -> None:
     indices_cfg: Mapping[str, Any] = cfg.get("indices", {})
     output_cfg: Mapping[str, Any] = cfg.get("output", {})
 
-    df = read_game_table(input_cfg["path"], fmt=input_cfg.get("format"))
-    validate_game_table(df)
+    df = read_game_table(
+        input_cfg["path"],
+        fmt=input_cfg.get("format"),
+        coalition_column=input_cfg.get("coalition_column", "coalition"),
+    )
+
+    # Fill missing scenario/game columns with defaults if absent
+    scenario_col = input_cfg.get("scenario_column", "scenario_id")
+    game_col = input_cfg.get("game_column", "game_id")
+    if scenario_col not in df.columns:
+        df[scenario_col] = 0
+    if game_col not in df.columns:
+        df[game_col] = 0
 
     # Optionally derive coalition ranks from values.
     ranking_cfg: Mapping[str, Any] = input_cfg.get("ranking", {})  # type: ignore[assignment]
@@ -43,8 +55,8 @@ def run_from_config(config_path: Path) -> None:
     if mode != "none":
         df = add_rank_from_value(
             df,
-            scenario_column=input_cfg.get("scenario_column", "scenario_id"),
-            game_column=input_cfg.get("game_column", "game_id"),
+            scenario_column=scenario_col,
+            game_column=game_col,
             value_column=input_cfg.get("value_column", "value"),
             rank_column=input_cfg.get("rank_column", "rank"),
             method=mode,
@@ -53,13 +65,17 @@ def run_from_config(config_path: Path) -> None:
         )
 
     game_type = GameType[input_cfg.get("game_type", "TU")]
+
+    validate_game_table(df)
+
     games = build_games_from_table(
         df,
         game_type=game_type,
-        scenario_column=input_cfg.get("scenario_column", "scenario_id"),
-        game_column=input_cfg.get("game_column", "game_id"),
+        scenario_column=scenario_col,
+        game_column=game_col,
         value_column=input_cfg.get("value_column", "value"),
         rank_column=input_cfg.get("rank_column", "rank"),
+        players_override=input_cfg.get("players"),
     )
 
     rows: list[dict[str, Any]] = []
@@ -229,23 +245,19 @@ def run_from_config(config_path: Path) -> None:
         logger.info("Wrote metrics table to %s", metrics_path)
 
     if not interactions_df.empty:
-        if fmt == "csv":
-            with interactions_path.open("w", encoding="utf-8") as f:
-                f.write("coalition,size,shapley_interaction,banzhaf_interaction\n")
-                for _, row in interactions_df.iterrows():
-                    coalition_str = str(row["coalition"])
-                    size_val = row["size"]
-                    shap_val = row["shapley_interaction"]
-                    banz_val = row["banzhaf_interaction"]
-
-                    def _fmt(x: Any) -> str:
-                        return "" if pd.isna(x) else str(x)
-
-                    line = (
-                        f"{coalition_str},{size_val},"
-                        f"{_fmt(shap_val)},{_fmt(banz_val)}\n"
-                    )
-                    f.write(line)
-        else:
-            write_table(interactions_df, interactions_path, fmt=fmt)
+        # coalition カラムは既に "{1,2}" 形式の文字列なので、そのまま保存
+        write_table(interactions_df, interactions_path, fmt=fmt)
         logger.info("Wrote interaction table to %s", interactions_path)
+
+    # Visualization (enabled by default)
+    viz_cfg: Mapping[str, Any] = cfg.get("visualization", {})
+    viz_enabled = viz_cfg.get("enabled", True)
+    if viz_enabled:
+        try:
+            if not result_df.empty:
+                plot_individuals(result_df, base_dir)
+                plot_rank_heatmap(result_df, base_dir)
+            if not interactions_df.empty:
+                plot_coalitions(interactions_df, base_dir)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Visualization failed: %s", exc)

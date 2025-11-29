@@ -1,0 +1,45 @@
+input:
+  # 入力ゲームテーブル（必要に応じて *_002, *_003... に差し替え）
+  path: data/game_tables/levinthal1997/levinthal1997_003.csv
+  format: csv
+  game_type: TU
+
+  # カラム名（levinthal1997_* の構造に合わせる）
+  scenario_column: scenario_id    # 無ければ自動で 0 を入れる
+  game_column: game_id            # 無ければ自動で 0 を入れる
+  coalition_column: members       # coalition の代わりに members 列
+  value_column: mean_value        # 価値列
+  rank_column: rank               # 無ければ順位は付与されない（ranking が off の場合）
+  # players: [0,1,2,3,4,5,6,7,8,9]   # 必要に応じて明示的に指定
+
+  ranking:
+    mode: dense
+    bin_width: 0.01
+    descending: true
+
+indices:
+  shapley:
+    exact: true
+    monte_carlo_samples: 0
+  banzhaf:
+    enabled: true
+    normalize: true
+  ordinal:
+    enabled: true
+  synergy:
+    enabled: true
+  group_values:
+    enabled: false
+  lex_cel:
+    enabled: true
+  interactions:
+    enabled: true
+    shapley: true
+    banzhaf: true
+
+output:
+  path: null
+  format: csv
+
+logging:
+  config: config/logging.yaml

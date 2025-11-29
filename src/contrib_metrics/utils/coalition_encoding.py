@@ -17,6 +17,17 @@ def normalize_coalition(value: Any) -> FrozenSet[int]:
         s = value.strip()
         if not s:
             return frozenset()
+        # tuple-like string e.g. "('0','1')" or "(0,1)"
+        if s.startswith("(") and s.endswith(")"):
+            inner = s.strip("()").strip()
+            if not inner:
+                return frozenset()
+            cleaned = []
+            for part in inner.split(","):
+                part = part.strip().strip("'").strip('"')
+                if part:
+                    cleaned.append(int(part))
+            return frozenset(cleaned)
         if s.startswith("{") and s.endswith("}"):
             inner = s.strip("{}").strip()
             if not inner:

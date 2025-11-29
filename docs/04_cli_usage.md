@@ -24,6 +24,8 @@ poetry run contrib-metrics compute --config config/example_config.yaml
     - `mode`: `dense`（dense ranking）または `bin`（ビン分割してから ranking）
     - `bin_width`: `mode: bin` のときのビン幅（例: 0.01）
     - `descending`: true のとき大きい値ほど良い（rank=1 が最良）
+  - `players`: プレイヤーIDを明示的に指定したい場合のリスト（例: `[0,1,2,3]`）。  
+    入力テーブルに全プレイヤーが登場しないケースでも、ここに指定すれば計算対象に含められる。
 - `indices`: 計算する指標とオプション
 - `output`: 結果の出力先
   - `format`: `csv` または `parquet` など
@@ -37,5 +39,28 @@ poetry run contrib-metrics compute --config config/example_config.yaml
   - `path` を明示指定した場合は、そのパスをディレクトリとして扱い、
     `individuals.<format>` / `coalitions.<format>` をその中に出力する
 - `logging`: ログ設定ファイル
+
+## 可視化（デフォルト ON）
+
+`compute` 実行時には、結果テーブルと同じディレクトリに簡易な可視化も自動出力されます。
+
+- プレイヤー指標 (`individuals.<format>`) に対して:
+  - `individuals_shapley.png`: Shapley 値の棒グラフ
+  - `individuals_banzhaf.png`: Banzhaf 値の棒グラフ
+  - `individuals_rank_heatmap.png`:  
+    `*_rank` カラム（例: `shapley_rank`, `banzhaf_rank`, `ordinal_banzhaf_rank`, `lex_cel_rank`）同士の
+    Spearman 相関行列のヒートマップ（全組み合わせのランキング比較）
+- 連立指標 (`coalitions.<format>`) に対して:
+  - `coalitions_shapley_interaction.png`: 連立ごとの Shapley interaction の棒グラフ
+  - `coalitions_banzhaf_interaction.png`: 連立ごとの Banzhaf interaction の棒グラフ
+
+可視化を無効化したい場合は、設定ファイルに:
+
+```yaml
+visualization:
+  enabled: false
+```
+
+を追加してください。
 
 詳細な項目は `config/example_config.yaml` を参照してください。
