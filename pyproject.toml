@@ -1,0 +1,39 @@
+[tool.poetry]
+name = "contribution-metrics"
+version = "0.1.0"
+description = "Post-processing engine for contribution metrics from game tables."
+authors = ["Your Name <you@example.com>"]
+readme = "README.md"
+packages = [{ include = "contrib_metrics", from = "src" }]
+license = "MIT"
+
+[tool.poetry.dependencies]
+python = ">=3.12,<3.13"
+pandas = "^2.2.0"
+pyarrow = "^17.0.0"
+pyyaml = "^6.0.1"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.0.0"
+black = "^24.0.0"
+ruff = "^0.7.0"
+
+[tool.poetry.scripts]
+contrib-metrics = "contrib_metrics.cli:main"
+
+[build-system]
+requires = ["poetry-core>=1.8.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 88
+target-version = ["py312"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+select = ["E", "F", "I", "B"]
+ignore = []
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]

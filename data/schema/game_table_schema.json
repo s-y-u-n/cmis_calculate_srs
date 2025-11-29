@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "GameTable",
+  "type": "object",
+  "properties": {
+    "scenario_id": { "type": ["string", "integer"] },
+    "game_id": { "type": ["string", "integer"] },
+    "coalition": { "type": ["string", "integer", "array"] },
+    "value": { "type": ["number", "null"] },
+    "rank": { "type": ["integer", "null"] },
+    "parameters": {}
+  },
+  "required": ["scenario_id", "game_id", "coalition"],
+  "additionalProperties": true
+}

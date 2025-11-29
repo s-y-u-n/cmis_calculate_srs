@@ -1,0 +1,32 @@
+input:
+  path: data/samples/small_game_ordinal.csv
+  format: csv
+  game_type: ORDINAL
+  scenario_column: scenario_id
+  game_column: game_id
+  coalition_column: coalition
+  value_column: value
+  rank_column: rank
+
+indices:
+  shapley:
+    exact: false
+    monte_carlo_samples: 0
+  banzhaf:
+    enabled: false
+    normalize: true
+  ordinal:
+    enabled: true
+  synergy:
+    enabled: false
+  group_values:
+    enabled: false
+  lex_cel:
+    enabled: true
+
+output:
+  path: null
+  format: csv
+
+logging:
+  config: config/logging.yaml

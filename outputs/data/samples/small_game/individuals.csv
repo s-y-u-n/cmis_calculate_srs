@@ -1,0 +1,4 @@
+player,shapley,banzhaf,shapley_rank,banzhaf_rank,ordinal_banzhaf_score,ordinal_banzhaf_rank,lex_cel_theta,lex_cel_rank
+1,1.0,0.3333333333333333,1,1,4,1,"1,2,1,0",1
+2,1.0,0.3333333333333333,1,1,4,1,"1,2,1,0",1
+3,1.0,0.3333333333333333,1,1,4,1,"1,2,1,0",1
