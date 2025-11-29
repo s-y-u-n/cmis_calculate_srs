@@ -213,6 +213,59 @@ $$
 - `coalitions.<format>` の `group_ordinal_banzhaf_score` 列として出力することで、
   連立レベルの ordinal な「相互作用」を SRS として利用できる。
 
+### Group lex-cel
+
+Group lex-cel は、連立 $T$ について「$T$ を含む上位連立の頻度ベクトル」を用いる序数的なグループ指標である。
+
+先ほどと同じ coalitional ranking $\succsim\in\mathcal{R}(F(N))$ を考え、
+対応する quotient ranking
+
+$$
+\Sigma_1 \succ \Sigma_2 \succ \cdots \succ \Sigma_\ell
+$$
+
+をとる。
+
+任意の非空連立 $T\in F(N)$ と $k=1,\ldots,\ell$ について
+
+$$
+  T_k := \bigl|\{\, S \in \Sigma_k \mid T \subseteq S \,\}\bigr|,
+  \qquad
+  \Theta_{\succsim}(T) := (T_1,\ldots,T_\ell)
+$$
+
+を定義する。
+
+Group lex-cel 解は
+
+$$
+  R^{\mathrm{grp}}_{\mathrm{le}} : \mathcal{R}(F(N)) \to \mathcal{B}(F(N))
+$$
+
+として、全ての非空 $T,U\in F(N)$ について
+
+$$
+  T\; R^{\mathrm{grp}}_{\mathrm{le}}(\succsim)\; U
+  \Longleftrightarrow
+  \Theta_{\succsim}(T)\;\ge_{\mathrm{lex}}\;\Theta_{\succsim}(U)
+$$
+
+と定義される（\(\ge_{\mathrm{lex}}\) は高い層から順に比較する辞書式順序）。
+
+- $I^{\mathrm{grp,le}}_{\succsim}$ : $R^{\mathrm{grp}}_{\mathrm{le}}(\succsim)$ の対称部分
+- $P^{\mathrm{grp,le}}_{\succsim}$ : その非対称部分
+
+実装では:
+
+- `compute_group_lex_cel(game)` が
+  - 各連立 $T$ について $\Theta_{\succsim}(T)$ を
+  - そこから誘導される lex-cel 関係（$P$, $I$）
+  を `GroupLexCelRelation` として返し、
+- `coalitions.<format>` の
+  - `group_lexcel_theta` 列として頻度ベクトル（カンマ区切り）を
+  - `group_lexcel_rank` 列として lex 次のグループランク（1 が最良）を
+  出力することで、連立レベルの lex-cel 型 SRS を利用できる。
+
 ## Group values
 
 モジュール: `contrib_metrics.indices.group_values`

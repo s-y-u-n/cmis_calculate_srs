@@ -287,3 +287,94 @@ def compute_group_ordinal_banzhaf_relation(
                 R.add((S, T))
 
     return GroupOrdinalBanzhafRelation(scores=scores, R=frozenset(R))
+
+
+@dataclass(frozen=True)
+class GroupLexCelRelation:
+    """Group lex-cel relation on coalitions.
+
+    Theta: frequency vectors Θ_≽(T) for each coalition (highest layer first).
+    P: asymmetric part P^{grp,le}_{≽} as a set of ordered pairs (T, U).
+    I: symmetric part I^{grp,le}_{≽} as a set of unordered pairs frozenset({T, U}).
+    """
+
+    theta: Mapping[Coalition, Sequence[int]]
+    P: frozenset[tuple[Coalition, Coalition]]
+    I: frozenset[frozenset[Coalition]]
+
+
+def compute_group_lex_cel(
+    game: Game,
+    subsets: Iterable[Coalition] | None = None,
+) -> GroupLexCelRelation:
+    """Compute group lex-cel relation from coalition ranking.
+
+    For each nonempty coalition T, we build Θ_≽(T) = (T_1, ..., T_ell) where
+    T_k = |{ S ∈ Σ_k | T ⊆ S }|, and compare lexicographically.
+    """
+    if game.ranks is None:
+        msg = "Game.ranks must be defined for group lex-cel."
+        raise ValueError(msg)
+
+    ranks = game.ranks
+    players = list(game.players)
+
+    # Build quotient ranking: layers Σ_1, ..., Σ_ell
+    layer_values = sorted({r for r in ranks.values()})
+    layers: list[list[Coalition]] = [[] for _ in layer_values]
+    value_to_index = {v: idx for idx, v in enumerate(layer_values)}
+
+    for coalition, r in ranks.items():
+        idx = value_to_index[r]
+        layers[idx].append(coalition)
+
+    # Target coalitions T: nonempty coalitions over N (or restricted subsets)
+    from itertools import combinations
+
+    n = len(players)
+    if subsets is None:
+        target_subsets: list[Coalition] = [
+            frozenset(S)
+            for k in range(1, n + 1)
+            for S in combinations(players, k)
+        ]
+    else:
+        target_subsets = [frozenset(T) for T in subsets if T]
+
+    # Compute frequency vectors Θ(T) = (T_1, ..., T_ell)
+    theta: dict[Coalition, list[int]] = {
+        T: [0] * len(layers) for T in target_subsets
+    }
+    for k, coalitions in enumerate(layers):
+        for S in coalitions:
+            for T in target_subsets:
+                if T.issubset(S):
+                    theta[T][k] += 1
+
+    # Lexicographic comparison helper
+    def _lex_cmp(a: Sequence[int], b: Sequence[int]) -> int:
+        for x, y in zip(a, b):
+            if x > y:
+                return 1
+            if x < y:
+                return -1
+        return 0
+
+    P: set[tuple[Coalition, Coalition]] = set()
+    I: set[frozenset[Coalition]] = set()
+
+    for T in target_subsets:
+        for U in target_subsets:
+            if T == U:
+                continue
+            cmp = _lex_cmp(theta[T], theta[U])
+            if cmp > 0:
+                P.add((T, U))
+            elif cmp == 0:
+                I.add(frozenset({T, U}))
+
+    return GroupLexCelRelation(
+        theta={T: tuple(v) for T, v in theta.items()},
+        P=frozenset(P),
+        I=frozenset(I),
+    )

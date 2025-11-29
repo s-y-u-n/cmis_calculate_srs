@@ -36,6 +36,7 @@ indices:
     shapley: true
     banzhaf: true
     group_ordinal_banzhaf: true
+    group_lex_cel: true
 
 output:
   # path を省略または null にすると、

@@ -8,10 +8,12 @@ import pandas as pd
 from ..config_loader import load_config
 from ..indices.banzhaf import compute_banzhaf
 from ..indices.ordinal import (
+    GroupLexCelRelation,
     LexCelRelation,
+    compute_group_lex_cel,
+    compute_group_ordinal_banzhaf_scores,
     compute_lex_cel,
     compute_ordinal_banzhaf_scores,
-    compute_group_ordinal_banzhaf_scores,
 )
 from ..indices.interactions import (
     compute_banzhaf_interaction,
@@ -93,6 +95,10 @@ def run_from_config(config_path: Path) -> None:
     banzhaf_interactions_enabled = interactions_cfg.get("banzhaf", True)
     group_ordinal_interactions_enabled = interactions_cfg.get(
         "group_ordinal_banzhaf",
+        False,
+    )
+    group_lexcel_interactions_enabled = interactions_cfg.get(
+        "group_lex_cel",
         False,
     )
     for game in games:
@@ -212,9 +218,33 @@ def run_from_config(config_path: Path) -> None:
                 if group_ordinal_interactions_enabled
                 else {}
             )
+            group_lex_rel: GroupLexCelRelation | None = None
+            group_lex_rank: dict[Coalition, int] | None = None
+            group_lex_theta: dict[Coalition, Sequence[int]] | None = None
+            if group_lexcel_interactions_enabled:
+                try:
+                    group_lex_rel = compute_group_lex_cel(game)
+                    group_lex_theta = {
+                        c: tuple(v) for c, v in group_lex_rel.theta.items()
+                    }
+                    unique_vecs = sorted(
+                        set(group_lex_theta.values()),
+                        reverse=True,
+                    )
+                    vec_to_rank = {
+                        vec: idx + 1 for idx, vec in enumerate(unique_vecs)
+                    }
+                    group_lex_rank = {
+                        c: vec_to_rank[group_lex_theta[c]] for c in group_lex_theta
+                    }
+                except ValueError as exc:
+                    logger.warning("group lex-cel requested but not applicable: %s", exc)
 
             all_coalitions = (
-                set(shap_int.keys()) | set(banz_int.keys()) | set(group_ord.keys())
+                set(shap_int.keys())
+                | set(banz_int.keys())
+                | set(group_ord.keys())
+                | (set(group_lex_theta.keys()) if group_lex_theta else set())
             )
 
             def _coalition_to_str(c: frozenset[int]) -> str:
@@ -224,6 +254,13 @@ def run_from_config(config_path: Path) -> None:
                 return "{" + parts + "}"
 
             for coalition in all_coalitions:
+                theta_str = None
+                rank_val = None
+                if group_lex_theta is not None and coalition in group_lex_theta:
+                    theta_str = ",".join(str(x) for x in group_lex_theta[coalition])
+                if group_lex_rank is not None:
+                    rank_val = group_lex_rank.get(coalition)
+
                 interaction_rows.append(
                     {
                         "coalition": _coalition_to_str(coalition),
@@ -231,6 +268,8 @@ def run_from_config(config_path: Path) -> None:
                         "shapley_interaction": shap_int.get(coalition),
                         "banzhaf_interaction": banz_int.get(coalition),
                         "group_ordinal_banzhaf_score": group_ord.get(coalition),
+                        "group_lexcel_theta": theta_str,
+                        "group_lexcel_rank": rank_val,
                     }
                 )
 

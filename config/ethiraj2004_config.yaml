@@ -37,6 +37,7 @@ indices:
     shapley: true
     banzhaf: true
     group_ordinal_banzhaf: true
+    group_lex_cel: true
 
 output:
   # null の場合: outputs/<input親>/<input_stem>/ に individuals/coalitions を出力

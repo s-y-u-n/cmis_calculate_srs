@@ -97,12 +97,39 @@ def plot_coalitions(df: pd.DataFrame, out_dir: Path, title_prefix: str = "") -> 
         plt.savefig(out_dir / filename)
         plt.close()
 
+    def _bar_plot_rank(column: str, filename: str, ylabel: str) -> None:
+        if column not in plot_df.columns:
+            return
+        values = plot_df[column]
+        if values.empty:
+            return
+        max_rank = int(values.max())
+        plot_vals = max_rank + 1 - values
+        plt.figure(figsize=(max(8, len(coalitions) * 0.4), 4))
+        plt.bar(range(len(coalitions)), plot_vals)
+        plt.xticks(range(len(coalitions)), coalitions, rotation=90)
+        plt.ylabel(ylabel)
+        plt.title(f"{title_prefix}{column}")
+        ax = plt.gca()
+        ax.set_ylim(0, max_rank + 1)
+        tick_positions = [max_rank + 1 - r for r in range(1, max_rank + 1)]
+        ax.set_yticks(tick_positions)
+        ax.set_yticklabels([str(r) for r in range(1, max_rank + 1)])
+        plt.tight_layout()
+        plt.savefig(out_dir / filename)
+        plt.close()
+
     _bar_plot("shapley_interaction", "coalitions_shapley_interaction.png", "Shapley interaction")
     _bar_plot("banzhaf_interaction", "coalitions_banzhaf_interaction.png", "Banzhaf interaction")
     _bar_plot(
         "group_ordinal_banzhaf_score",
         "coalitions_group_ordinal_banzhaf_score.png",
         "Group Ordinal Banzhaf score",
+    )
+    _bar_plot_rank(
+        "group_lexcel_rank",
+        "coalitions_group_lexcel_rank.png",
+        "Group lex-cel rank",
     )
 
 
@@ -165,11 +192,12 @@ def plot_interaction_heatmap(
     out_dir.mkdir(parents=True, exist_ok=True)
 
     if columns is None:
-        # 代表的な interaction 系の列
+        # 代表的な interaction / group-ordinal 系の列
         candidates = [
             "shapley_interaction",
             "banzhaf_interaction",
             "group_ordinal_banzhaf_score",
+            "group_lexcel_rank",
         ]
         columns = [c for c in candidates if c in df.columns]
 
@@ -181,7 +209,18 @@ def plot_interaction_heatmap(
     if data.empty:
         return
 
-    corr = data.corr(method="spearman")
+    # スコアではなく rank 単位で比較するため、列ごとに rank 変換してから
+    # 相関を計算する（Spearman 相関と同値）。
+    ranked = pd.DataFrame(index=data.index)
+    for col in columns:
+        s = data[col]
+        if col.endswith("_rank"):
+            ranked[col] = s
+        else:
+            # 大きいスコアほど良いとみなし dense ranking（1 が最大）を付与
+            ranked[col] = s.rank(method="dense", ascending=False)
+
+    corr = ranked.corr(method="pearson")
 
     plt.figure(figsize=(4 + len(columns), 4 + len(columns)))
     im = plt.imshow(corr.values, vmin=-1, vmax=1, cmap="coolwarm", origin="lower")
