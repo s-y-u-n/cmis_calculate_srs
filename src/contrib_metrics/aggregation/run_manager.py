@@ -29,6 +29,7 @@ from ..model.transforms import add_rank_from_value, build_games_from_table
 from ..utils.logging_utils import get_logger
 from .visualization import (
     plot_coalitions,
+    plot_coalition_values,
     plot_individuals,
     plot_interaction_heatmap,
     plot_rank_heatmap,
@@ -276,6 +277,19 @@ def run_from_config(config_path: Path) -> None:
     result_df = pd.DataFrame(rows)
     interactions_df = pd.DataFrame(interaction_rows)
 
+    # coalition の並び順は coalition の構造に基づく固定順序に統一する
+    if not interactions_df.empty:
+        if "size" in interactions_df.columns:
+            interactions_df = interactions_df.sort_values(
+                ["size", "coalition"],
+                kind="mergesort",
+            )
+        else:
+            interactions_df = interactions_df.sort_values(
+                ["coalition"],
+                kind="mergesort",
+            )
+
     fmt = str(output_cfg.get("format", "csv"))
     raw_out_path = output_cfg.get("path")
 
@@ -317,5 +331,13 @@ def run_from_config(config_path: Path) -> None:
             if not interactions_df.empty:
                 plot_coalitions(interactions_df, base_dir)
                 plot_interaction_heatmap(interactions_df, base_dir)
+            # 元のゲームテーブル値に基づく coalition スコアの棒グラフ
+            value_col = input_cfg.get("value_column", "value")
+            if value_col in df.columns:
+                # coalition の並び順は interactions_df の coalition 列に合わせる
+                order: list[str] | None = None
+                if not interactions_df.empty and "coalition" in interactions_df.columns:
+                    order = interactions_df["coalition"].astype(str).tolist()
+                plot_coalition_values(df, value_col, base_dir, coalition_order=order)
         except Exception as exc:  # noqa: BLE001
             logger.warning("Visualization failed: %s", exc)

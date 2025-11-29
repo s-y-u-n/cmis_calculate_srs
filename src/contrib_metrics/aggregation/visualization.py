@@ -77,11 +77,8 @@ def plot_coalitions(df: pd.DataFrame, out_dir: Path, title_prefix: str = "") -> 
     if "coalition" not in df.columns:
         return
 
-    # Sort by size then by interaction
+    # 並び順は run_manager 側で既にソート済みの DataFrame に従う
     plot_df = df.copy()
-    if "size" in plot_df.columns:
-        plot_df = plot_df.sort_values(["size", "coalition"])
-
     coalitions = plot_df["coalition"].astype(str)
 
     def _bar_plot(column: str, filename: str, ylabel: str) -> None:
@@ -245,4 +242,53 @@ def plot_interaction_heatmap(
 
     plt.tight_layout()
     plt.savefig(out_dir / "coalitions_interaction_heatmap.png")
+    plt.close()
+
+
+def plot_coalition_values(
+    df: pd.DataFrame,
+    value_column: str,
+    out_dir: Path,
+    title_prefix: str = "",
+    coalition_order: List[str] | None = None,
+) -> None:
+    """Bar plot of original game-table values per coalition."""
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    if "coalition" not in df.columns or value_column not in df.columns:
+        return
+
+    # coalition が frozenset の想定。文字列に整形し、同じ coalition が複数行ある場合は平均をとる。
+    def _coalition_to_str(c: object) -> str:
+        if isinstance(c, frozenset):
+            if not c:
+                return "{}"
+            parts = ",".join(str(x) for x in sorted(c))
+            return "{" + parts + "}"
+        return str(c)
+
+    plot_df = df.copy()
+    plot_df["coal_str"] = plot_df["coalition"].map(_coalition_to_str)
+    agg = plot_df.groupby("coal_str", as_index=False)[value_column].mean()
+
+    if coalition_order is not None:
+        # interactions_df の coalition 順に並べたい場合
+        agg = agg[agg["coal_str"].isin(coalition_order)]
+        agg = agg.set_index("coal_str").reindex(coalition_order).reset_index()
+    else:
+        agg = agg.sort_values("coal_str")
+
+    if agg.empty:
+        return
+
+    coalitions = agg["coal_str"].astype(str)
+    values = agg[value_column]
+
+    plt.figure(figsize=(max(8, len(coalitions) * 0.4), 4))
+    plt.bar(range(len(coalitions)), values)
+    plt.xticks(range(len(coalitions)), coalitions, rotation=90)
+    plt.ylabel(value_column)
+    plt.title(f"{title_prefix}{value_column}")
+    plt.tight_layout()
+    plt.savefig(out_dir / "coalitions_value.png")
     plt.close()

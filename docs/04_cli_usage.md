@@ -56,9 +56,11 @@ poetry run contrib-metrics compute --config config/example_config.yaml
   - `coalitions_shapley_interaction.png`: 連立ごとの Shapley interaction の棒グラフ
   - `coalitions_banzhaf_interaction.png`: 連立ごとの Banzhaf interaction の棒グラフ
   - `coalitions_group_ordinal_banzhaf_score.png`: 連立ごとの Group Ordinal Banzhaf スコアの棒グラフ
+  - `coalitions_group_lexcel_rank.png`: 連立ごとの Group lex-cel ランクの棒グラフ
+  - `coalitions_value.png`: 元のゲームテーブルの value（`value_column`）に基づく連立スコアの棒グラフ
   - `coalitions_interaction_heatmap.png`:  
-    `shapley_interaction`, `banzhaf_interaction`, `group_ordinal_banzhaf_score` 同士の
-    Spearman 相関行列のヒートマップ（interaction 系指標の比較）
+    `shapley_interaction`, `banzhaf_interaction`, `group_ordinal_banzhaf_score`, `group_lexcel_rank`
+    を rank ベースに変換したもの同士の相関行列ヒートマップ（interaction / group-ordinal 系指標の比較）
 
 可視化を無効化したい場合は、設定ファイルに:
 
