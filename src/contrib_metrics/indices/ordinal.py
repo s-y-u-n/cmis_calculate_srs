@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, Mapping, Sequence
+from typing import Dict, Iterable, Mapping, Sequence
 
 from ..model.game import Coalition, Game
 
@@ -194,3 +194,96 @@ def compute_lex_cel(game: Game) -> LexCelRelation:
         P=frozenset(P),
         I=frozenset(I),
     )
+
+
+def compute_group_ordinal_banzhaf_scores(
+    game: Game,
+    subsets: Iterable[Coalition] | None = None,
+) -> Dict[Coalition, int]:
+    """Group ordinal Banzhaf scores s_T for coalitions T.
+
+    定義に従い、各 T ⊆ N について
+      m_T^S(≽) = 1  if S ∪ T ≻ S
+                = -1 if S ≻ S ∪ T
+                = 0  otherwise,
+    とし、
+      u_T^+ = |{S | m_T^S = 1}|
+      u_T^- = |{S | m_T^S = -1}|
+      s_T    = u_T^+ - u_T^-.
+    を計算する。
+    """
+    if game.ranks is None:
+        msg = "Game.ranks must be defined for group ordinal Banzhaf."
+        raise ValueError(msg)
+
+    ranks = game.ranks
+    players = list(game.players)
+    n = len(players)
+
+    # 対象となる連立 T
+    if subsets is None:
+        target_subsets: list[Coalition] = [
+            frozenset(S)
+            for k in range(1, n + 1)
+            for S in __import__("itertools").combinations(players, k)
+        ]
+    else:
+        target_subsets = [frozenset(T) for T in subsets]
+
+    # プレイヤー集合を固定
+    from itertools import combinations
+
+    scores: dict[Coalition, int] = {}
+
+    for T in target_subsets:
+        if not T:
+            scores[T] = 0
+            continue
+
+        rest = [p for p in players if p not in T]
+        u_plus = 0
+        u_minus = 0
+
+        for k in range(len(rest) + 1):
+            for S_tuple in combinations(rest, k):
+                S = frozenset(S_tuple)
+                with_T = frozenset(set(S) | set(T))
+                if S not in ranks or with_T not in ranks:
+                    continue
+
+                r_S = ranks[S]
+                r_with = ranks[with_T]
+
+                if r_with < r_S:
+                    u_plus += 1
+                elif r_S < r_with:
+                    u_minus += 1
+
+        scores[T] = u_plus - u_minus
+
+    return scores
+
+
+@dataclass(frozen=True)
+class GroupOrdinalBanzhafRelation:
+    """Group ordinal Banzhaf relation on coalitions."""
+
+    scores: Mapping[Coalition, int]
+    R: frozenset[tuple[Coalition, Coalition]]
+
+
+def compute_group_ordinal_banzhaf_relation(
+    game: Game,
+    subsets: Iterable[Coalition] | None = None,
+) -> GroupOrdinalBanzhafRelation:
+    """Compute the group ordinal Banzhaf relation over coalitions."""
+    scores = compute_group_ordinal_banzhaf_scores(game, subsets=subsets)
+    coalitions = list(scores.keys())
+
+    R: set[tuple[Coalition, Coalition]] = set()
+    for S in coalitions:
+        for T in coalitions:
+            if scores[S] >= scores[T]:
+                R.add((S, T))
+
+    return GroupOrdinalBanzhafRelation(scores=scores, R=frozenset(R))

@@ -99,6 +99,11 @@ def plot_coalitions(df: pd.DataFrame, out_dir: Path, title_prefix: str = "") -> 
 
     _bar_plot("shapley_interaction", "coalitions_shapley_interaction.png", "Shapley interaction")
     _bar_plot("banzhaf_interaction", "coalitions_banzhaf_interaction.png", "Banzhaf interaction")
+    _bar_plot(
+        "group_ordinal_banzhaf_score",
+        "coalitions_group_ordinal_banzhaf_score.png",
+        "Group Ordinal Banzhaf score",
+    )
 
 
 def plot_rank_heatmap(
@@ -148,4 +153,57 @@ def plot_rank_heatmap(
 
     plt.tight_layout()
     plt.savefig(out_dir / "individuals_rank_heatmap.png")
+    plt.close()
+
+
+def plot_interaction_heatmap(
+    df: pd.DataFrame,
+    out_dir: Path,
+    title: str = "Interaction correlation (Spearman)",
+    columns: List[str] | None = None,
+) -> None:
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    if columns is None:
+        # 代表的な interaction 系の列
+        candidates = [
+            "shapley_interaction",
+            "banzhaf_interaction",
+            "group_ordinal_banzhaf_score",
+        ]
+        columns = [c for c in candidates if c in df.columns]
+
+    columns = [c for c in columns if c in df.columns]
+    if len(columns) < 2:
+        return
+
+    data = df[columns].copy()
+    if data.empty:
+        return
+
+    corr = data.corr(method="spearman")
+
+    plt.figure(figsize=(4 + len(columns), 4 + len(columns)))
+    im = plt.imshow(corr.values, vmin=-1, vmax=1, cmap="coolwarm", origin="lower")
+    plt.colorbar(im, fraction=0.046, pad=0.04)
+
+    tick_positions = range(len(columns))
+    plt.xticks(tick_positions, columns, rotation=45, ha="right")
+    plt.yticks(tick_positions, columns)
+    plt.title(title)
+
+    for i in range(len(columns)):
+        for j in range(len(columns)):
+            val = corr.values[i, j]
+            plt.text(
+                j,
+                i,
+                f"{val:.2f}",
+                ha="center",
+                va="center",
+                color="black" if abs(val) < 0.6 else "white",
+            )
+
+    plt.tight_layout()
+    plt.savefig(out_dir / "coalitions_interaction_heatmap.png")
     plt.close()

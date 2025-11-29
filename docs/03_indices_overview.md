@@ -132,9 +132,12 @@ $$
 
 ## Interaction 指標
 
-モジュール: `contrib_metrics.indices.interactions`
+モジュール: `contrib_metrics.indices.interactions`（cardinal）および  
+`contrib_metrics.indices.ordinal`（ordinal group Banzhaf）
 
-- 提供: Shapley Interaction Index、Banzhaf Interaction Index
+- Shapley Interaction Index
+- Banzhaf Interaction Index
+- Group Ordinal Banzhaf（序数版の相互作用）
 
 ### Shapley Interaction Index
 
@@ -155,6 +158,60 @@ I_v^{B}(S)=\frac{1}{2^{\,n-|S|}}\sum_{T\subseteq N\setminus S}\sum_{L\subseteq S
 $$
 
 実装は上式の直接評価に基づく（選択的に `subsets` パラメータで評価対象を絞れる）。
+
+### Group Ordinal Banzhaf
+
+有限集合 $N$ 上の coalitional ranking $\succsim\in\mathcal{R}(F(N))$ を考える。
+任意の連立 $T\subseteq N$ と $S\subseteq N\setminus T$ に対して、
+Group Ordinal Marginal Contribution を
+
+$$
+  m_T^S(\succsim)
+  :=
+  \begin{cases}
+    1 & \text{if } S \cup T \succ S,\\\\
+   -1 & \text{if } S \succ S \cup T,\\\\
+    0 & \text{otherwise},
+  \end{cases}
+$$
+
+と定義する。
+
+連立 $T$ の Group Ordinal Banzhaf スコアは
+
+$$
+  u_T^{+,\succsim}
+  :=
+  \bigl|\{\, S \subseteq N\setminus T \mid m_T^S(\succsim)=1 \,\}\bigr|,
+  \qquad
+  u_T^{-,\succsim}
+  :=
+  \bigl|\{\, S \subseteq N\setminus T \mid m_T^S(\succsim)=-1 \,\}\bigr|,
+$$
+
+$$
+  s_T^{\succsim}
+  :=
+  u_T^{+,\succsim}-u_T^{-,\succsim}
+$$
+
+で与えられる。
+
+Group Ordinal Banzhaf Relation は、全ての連立 $S,T\subseteq N$ に対して
+
+$$
+  S\ \hat{R}^{\succsim}_N\ T
+  \Longleftrightarrow
+  s_S^{\succsim} \ge s_T^{\succsim}
+$$
+
+と定義される。
+
+実装では:
+
+- `compute_group_ordinal_banzhaf_scores(game)` が $T\mapsto s_T^{\succsim}$ を返し、
+- `coalitions.<format>` の `group_ordinal_banzhaf_score` 列として出力することで、
+  連立レベルの ordinal な「相互作用」を SRS として利用できる。
 
 ## Group values
 

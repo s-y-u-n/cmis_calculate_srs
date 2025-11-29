@@ -11,6 +11,7 @@ from ..indices.ordinal import (
     LexCelRelation,
     compute_lex_cel,
     compute_ordinal_banzhaf_scores,
+    compute_group_ordinal_banzhaf_scores,
 )
 from ..indices.interactions import (
     compute_banzhaf_interaction,
@@ -24,7 +25,12 @@ from ..io.writers import write_table
 from ..model.game_types import GameType
 from ..model.transforms import add_rank_from_value, build_games_from_table
 from ..utils.logging_utils import get_logger
-from .visualization import plot_coalitions, plot_individuals, plot_rank_heatmap
+from .visualization import (
+    plot_coalitions,
+    plot_individuals,
+    plot_interaction_heatmap,
+    plot_rank_heatmap,
+)
 
 logger = get_logger(__name__)
 
@@ -85,6 +91,10 @@ def run_from_config(config_path: Path) -> None:
     interactions_enabled = interactions_cfg.get("enabled", False)
     shapley_interactions_enabled = interactions_cfg.get("shapley", True)
     banzhaf_interactions_enabled = interactions_cfg.get("banzhaf", True)
+    group_ordinal_interactions_enabled = interactions_cfg.get(
+        "group_ordinal_banzhaf",
+        False,
+    )
     for game in games:
         shap_cfg = indices_cfg.get("shapley", {})
         banz_cfg = indices_cfg.get("banzhaf", {})
@@ -197,8 +207,15 @@ def run_from_config(config_path: Path) -> None:
                 if banzhaf_interactions_enabled
                 else {}
             )
+            group_ord = (
+                compute_group_ordinal_banzhaf_scores(game)
+                if group_ordinal_interactions_enabled
+                else {}
+            )
 
-            all_coalitions = set(shap_int.keys()) | set(banz_int.keys())
+            all_coalitions = (
+                set(shap_int.keys()) | set(banz_int.keys()) | set(group_ord.keys())
+            )
 
             def _coalition_to_str(c: frozenset[int]) -> str:
                 if not c:
@@ -213,6 +230,7 @@ def run_from_config(config_path: Path) -> None:
                         "size": len(coalition),
                         "shapley_interaction": shap_int.get(coalition),
                         "banzhaf_interaction": banz_int.get(coalition),
+                        "group_ordinal_banzhaf_score": group_ord.get(coalition),
                     }
                 )
 
@@ -259,5 +277,6 @@ def run_from_config(config_path: Path) -> None:
                 plot_rank_heatmap(result_df, base_dir)
             if not interactions_df.empty:
                 plot_coalitions(interactions_df, base_dir)
+                plot_interaction_heatmap(interactions_df, base_dir)
         except Exception as exc:  # noqa: BLE001
             logger.warning("Visualization failed: %s", exc)
