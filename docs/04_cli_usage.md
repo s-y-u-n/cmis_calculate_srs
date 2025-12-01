@@ -32,12 +32,12 @@ poetry run contrib-metrics compute --config config/example_config.yaml
   - `path`: 明示的に指定しない（null のまま）の場合は、
     `input.path` に対して
     `outputs/<inputの親ディレクトリ>/<input_stem>/` を自動生成し、
-    そのディレクトリ内に
-    - `individuals.<format>`（プレイヤー指標）
-    - `coalitions.<format>`（グループ指標: Shapley/Banzhaf interaction）
-    を出力する
-  - `path` を明示指定した場合は、そのパスをディレクトリとして扱い、
-    `individuals.<format>` / `coalitions.<format>` をその中に出力する
+    さらに以下の 3 つのサブディレクトリに成果物を振り分ける
+    - `tables/individuals.<format>`（プレイヤー指標）
+    - `tables/coalitions.<format>`（グループ指標）
+    - `visualizations/*.png`（棒グラフ・ヒートマップ類）
+    - `axioms/*.csv`（公理評価結果。Swimmy/SADA 有効時のみ）
+  - `path` を明示指定した場合は、その配下に同じ構造（`tables/`, `visualizations/`, `axioms/`）を作成する
 - `axioms`: 公理レベルのメタ評価の設定
   - `swimmy`:
     - `enabled`: true のとき Swimmy Axiom に関する満足度を集計
@@ -50,7 +50,7 @@ poetry run contrib-metrics compute --config config/example_config.yaml
 
 ## 可視化（デフォルト ON）
 
-`compute` 実行時には、結果テーブルと同じディレクトリに簡易な可視化も自動出力されます。
+`compute` 実行時には、`visualizations/` ディレクトリに簡易な可視化も自動出力されます。
 
 - プレイヤー指標 (`individuals.<format>`) に対して:
   - `individuals_shapley.png`: Shapley 値の棒グラフ
@@ -83,7 +83,7 @@ visualization:
 
 ## 公理レベルのメタ評価（Swimmy / Synergy–Anasy）
 
-`axioms.swimmy.enabled: true` の場合、各ゲームについて:
+`axioms.swimmy.enabled: true` の場合、各ゲームについて（集計結果は `axioms/axioms_swimmy.csv` に保存）:
 
 - 2 人連立のペア \((S,T)\) のうち、Swimmy Axiom の前件を満たすものを「チェック対象」とし、
 - 指定された各シナジー比較ルール（例: Shapley interaction, Banzhaf interaction, Group Ordinal Banzhaf, Group lex-cel）について
@@ -100,4 +100,4 @@ visualization:
   指定されたシナジー比較ルール \(R^I\) について `T` が `U` より strictly interaction-better になっているかどうかをチェックし、
 - ルールごとに `triggered_pairs`, `satisfied_pairs`, `satisfaction_rate` を集計します。
 
-結果は `axioms_sada.csv` に出力されます。
+結果は `axioms/axioms_sada.csv` に出力されます。

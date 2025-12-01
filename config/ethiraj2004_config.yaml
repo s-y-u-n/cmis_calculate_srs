@@ -1,5 +1,5 @@
 input:
-  path: data/game_tables/ethiraj2004/ethiraj2004_001.csv  # 切り替え可
+  path: data/game_tables/ethiraj2004/ethiraj2004_003.csv  # 切り替え可
   format: csv
   game_type: TU
   # カラム名（ファイル構造に合わせる）

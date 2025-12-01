@@ -355,8 +355,15 @@ def run_from_config(config_path: Path) -> None:
         base_dir = Path(str(raw_out_path))
 
     base_dir.mkdir(parents=True, exist_ok=True)
-    metrics_path = base_dir / f"individuals.{fmt}"
-    interactions_path = base_dir / f"coalitions.{fmt}"
+    tables_dir = base_dir / "tables"
+    viz_dir = base_dir / "visualizations"
+    axioms_dir = base_dir / "axioms"
+
+    tables_dir.mkdir(parents=True, exist_ok=True)
+    viz_dir.mkdir(parents=True, exist_ok=True)
+
+    metrics_path = tables_dir / f"individuals.{fmt}"
+    interactions_path = tables_dir / f"coalitions.{fmt}"
 
     if result_df.empty:
         logger.warning("No player-level results produced.")
@@ -375,11 +382,11 @@ def run_from_config(config_path: Path) -> None:
     if viz_enabled:
         try:
             if not result_df.empty:
-                plot_individuals(result_df, base_dir)
-                plot_rank_heatmap(result_df, base_dir)
+                plot_individuals(result_df, viz_dir)
+                plot_rank_heatmap(result_df, viz_dir)
             if not interactions_df.empty:
-                plot_coalitions(interactions_df, base_dir)
-                plot_interaction_heatmap(interactions_df, base_dir)
+                plot_coalitions(interactions_df, viz_dir)
+                plot_interaction_heatmap(interactions_df, viz_dir)
             # 元のゲームテーブル値に基づく coalition スコアの棒グラフ
             value_col = input_cfg.get("value_column", "value")
             if value_col in df.columns:
@@ -387,7 +394,7 @@ def run_from_config(config_path: Path) -> None:
                 order: list[str] | None = None
                 if not interactions_df.empty and "coalition" in interactions_df.columns:
                     order = interactions_df["coalition"].astype(str).tolist()
-                plot_coalition_values(df, value_col, base_dir, coalition_order=order)
+                plot_coalition_values(df, value_col, viz_dir, coalition_order=order)
         except Exception as exc:  # noqa: BLE001
             logger.warning("Visualization failed: %s", exc)
 
@@ -413,7 +420,8 @@ def run_from_config(config_path: Path) -> None:
             return
 
         df = pd.DataFrame(records)
-        out_path = base_dir / filename
+        axioms_dir.mkdir(parents=True, exist_ok=True)
+        out_path = axioms_dir / filename
         write_table(df, out_path, fmt="csv")
         logger.info("Wrote %s", out_path)
 
