@@ -284,42 +284,41 @@ def run_from_config(config_path: Path) -> None:
                 )
 
         if (swimmy_enabled or sada_enabled) and game.ranks is not None:
-            # 様々なシナジー比較ルールに対して Swimmy Axiom の満足度を集計
-            available_rules: dict[str, dict[Coalition, float]] = {}
+            # 各シナジー比較ルールごとのスコア辞書を構築
+            all_rules: dict[str, dict[Coalition, float]] = {}
             if shap_int:
-                available_rules["shapley_interaction"] = {
+                all_rules["shapley_interaction"] = {
                     c: float(v) for c, v in shap_int.items()
                 }
             if banz_int:
-                available_rules["banzhaf_interaction"] = {
+                all_rules["banzhaf_interaction"] = {
                     c: float(v) for c, v in banz_int.items()
                 }
             if group_ord:
-                available_rules["group_ordinal_banzhaf_score"] = {
+                all_rules["group_ordinal_banzhaf_score"] = {
                     c: float(v) for c, v in group_ord.items()
                 }
             if group_lex_rank:
-                available_rules["group_lexcel_rank"] = {
+                all_rules["group_lexcel_rank"] = {
                     c: float(v) for c, v in group_lex_rank.items()
                 }
 
-            if swimmy_rule_filter:
-                available_rules = {
-                    name: scores
-                    for name, scores in available_rules.items()
-                    if name in swimmy_rule_filter
-                }
-
             if swimmy_enabled:
-                update_swimmy_counts(game, available_rules, swimmy_counts)
+                swimmy_rules = all_rules
+                if swimmy_rule_filter:
+                    swimmy_rules = {
+                        name: scores
+                        for name, scores in all_rules.items()
+                        if name in swimmy_rule_filter
+                    }
+                update_swimmy_counts(game, swimmy_rules, swimmy_counts)
 
             if sada_enabled:
-                # Synergy–Anasy Distinction 用には、rule のサブセットを選べるようにする
-                sada_rules = available_rules
+                sada_rules = all_rules
                 if sada_rule_filter:
                     sada_rules = {
                         name: scores
-                        for name, scores in available_rules.items()
+                        for name, scores in all_rules.items()
                         if name in sada_rule_filter
                     }
                 update_sada_counts(game, sada_rules, sada_counts)
@@ -392,4 +391,32 @@ def run_from_config(config_path: Path) -> None:
         except Exception as exc:  # noqa: BLE001
             logger.warning("Visualization failed: %s", exc)
 
-    # Swimmy Axiom の集計結果を出力
+    def _write_axiom_results(counts: dict[str, dict[str, int]], filename: str) -> None:
+        if not counts:
+            return
+
+        records: list[dict[str, Any]] = []
+        for rule_name, data in counts.items():
+            triggered = data.get("triggered", 0)
+            satisfied = data.get("satisfied", 0)
+            rate = satisfied / triggered if triggered else None
+            records.append(
+                {
+                    "rule": rule_name,
+                    "triggered_pairs": triggered,
+                    "satisfied_pairs": satisfied,
+                    "satisfaction_rate": rate,
+                }
+            )
+
+        if not records:
+            return
+
+        df = pd.DataFrame(records)
+        out_path = base_dir / filename
+        write_table(df, out_path, fmt="csv")
+        logger.info("Wrote %s", out_path)
+
+    # Swimmy/SADA Axiom の集計結果を出力
+    _write_axiom_results(swimmy_counts, "axioms_swimmy.csv")
+    _write_axiom_results(sada_counts, "axioms_sada.csv")
