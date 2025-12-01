@@ -38,7 +38,7 @@ poetry run contrib-metrics compute --config config/example_config.yaml
     - `visualizations/*.png`（棒グラフ・ヒートマップ類）
     - `axioms/*.csv`（公理評価結果。Swimmy/SADA 有効時のみ）
   - `path` を明示指定した場合は、その配下に同じ構造（`tables/`, `visualizations/`, `axioms/`）を作成する
-- `axioms`: 公理レベルのメタ評価の設定
+  - `axioms`: 公理レベルのメタ評価の設定
   - `swimmy`:
     - `enabled`: true のとき Swimmy Axiom に関する満足度を集計
     - `rules`: 対象とするシナジー比較ルール名のリスト  
@@ -63,11 +63,12 @@ poetry run contrib-metrics compute --config config/example_config.yaml
 - 連立指標 (`coalitions.<format>`) に対して:
   - `coalitions_shapley_interaction.png`: 連立ごとの Shapley interaction の棒グラフ
   - `coalitions_banzhaf_interaction.png`: 連立ごとの Banzhaf interaction の棒グラフ
+  - `coalitions_borda_interaction.png`: 連立ごとの Borda–Interaction の棒グラフ（`indices.interactions.borda: true` のとき）
   - `coalitions_group_ordinal_banzhaf_score.png`: 連立ごとの Group Ordinal Banzhaf スコアの棒グラフ
   - `coalitions_group_lexcel_rank.png`: 連立ごとの Group lex-cel ランクの棒グラフ
   - `coalitions_value.png`: 元のゲームテーブルの value（`value_column`）に基づく連立スコアの棒グラフ
   - `coalitions_interaction_heatmap.png`:  
-    `shapley_interaction`, `banzhaf_interaction`, `group_ordinal_banzhaf_score`, `group_lexcel_rank`
+    `shapley_interaction`, `banzhaf_interaction`, `borda_interaction`, `group_ordinal_banzhaf_score`, `group_lexcel_rank`
     を rank ベースに変換したもの同士の相関行列ヒートマップ（interaction / group-ordinal 系指標の比較）
 
 可視化を無効化したい場合は、設定ファイルに:

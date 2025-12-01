@@ -266,6 +266,71 @@ $$
   - `group_lexcel_rank` 列として lex 次のグループランク（1 が最良）を
   出力することで、連立レベルの lex-cel 型 SRS を利用できる。
 
+## Borda–Interaction（序数的インタラクション指標）
+
+### Borda スコア
+
+プレイヤー集合 $N$ 上の全連立 $F(N)$ に対して，弱順序
+$\succsim\in\mathcal{R}(F(N))$ が与えられているとする（小さい rank が良い）。
+この弱順序が誘導する同値類（quotient ranking）を
+
+$$
+\Sigma_1 \succ \Sigma_2 \succ \cdots \succ \Sigma_\ell
+$$
+
+と書く（$\Sigma_1$ が最上位の層）。
+
+第二定義に基づく Borda スコア $s_{\succsim}(x)$ を，各同値類ごとに
+
+$$
+s(\Sigma_k)
+ =
+ \bigl|\{\, D \in \{\Sigma_1,\ldots,\Sigma_\ell\} \mid \Sigma_k \succ D \,\}\bigr|
+ -
+ \bigl|\{\, D \in \{\Sigma_1,\ldots,\Sigma_\ell\} \mid D \succ \Sigma_k \,\}\bigr|
+ =
+ \ell - 2k + 1
+ \qquad (k = 1,\ldots,\ell)
+$$
+
+と定め，任意の $x \in \Sigma_k$ に対して
+
+$$
+s_{\succsim}(x) := s(\Sigma_k)
+$$
+
+とする。  
+実装上は，`game.ranks` によって与えられる連立ランキングから層 $\Sigma_k$ を復元し，上式に従って各連立の Borda スコアを計算している（`compute_borda_scores`）。
+
+### Borda–Interaction
+
+各プレイヤー $i\in N$ と 2 人連立 $\{i,j\}$ について
+
+$$
+s_{\succsim}(i) := s_{\succsim}(\{i\}),\qquad
+s_{\succsim}(i,j) := s_{\succsim}(\{i,j\})
+$$
+
+と書く。このとき Borda–Interaction は各 2 人連立 $T=\{i,j\}$ に対し
+
+$$
+\Delta^{\mathrm{Borda}}_{\succsim}(i,j)
+ :=
+ s_{\succsim}(i,j)
+ -
+ \frac{s_{\succsim}(i) + s_{\succsim}(j)}{2}
+$$
+
+によって定義される。
+
+実装では `compute_borda_scores` により全連立の Borda スコアを計算したうえで，単体 $\{i\},\{j\}$ とペア $\{i,j\}$ のスコアがすべて定義されている場合に限り，上式に従って
+
+$$
+\Delta^{\mathrm{Borda}}_{\succsim}(i,j)
+$$
+
+を `borda_interaction` として出力している（ペア連立のみが定義域）。
+
 ## Group values
 
 モジュール: `contrib_metrics.indices.group_values`

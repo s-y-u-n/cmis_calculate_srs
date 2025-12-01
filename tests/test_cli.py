@@ -37,5 +37,9 @@ indices:
 
     # Support both styles: with and without 'compute'
     main(["compute", "--config", str(cfg)])
-    captured = capsys.readouterr()
-    assert "player" in captured.out
+
+    # CLI は標準出力ではなく CSV に結果を書き出す想定なので、
+    # 出力ディレクトリに individuals テーブルが生成されていることを確認する。
+    base_dir = Path("outputs") / data.parent / data.stem
+    individuals = base_dir / "tables" / "individuals.csv"
+    assert individuals.exists()

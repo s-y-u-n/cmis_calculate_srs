@@ -35,6 +35,7 @@ indices:
     enabled: true
     shapley: true
     banzhaf: true
+    borda: true
     group_ordinal_banzhaf: true
     group_lex_cel: true
 
@@ -45,6 +46,7 @@ axioms:
     rules:
       - shapley_interaction
       - banzhaf_interaction
+      - borda_interaction
       - group_ordinal_banzhaf_score
       - group_lexcel_rank
   sada:
@@ -52,6 +54,7 @@ axioms:
     rules:
       - shapley_interaction
       - banzhaf_interaction
+      - borda_interaction
       - group_ordinal_banzhaf_score
       - group_lexcel_rank
 

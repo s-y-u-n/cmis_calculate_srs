@@ -10,6 +10,7 @@ from ..indices.banzhaf import compute_banzhaf
 from ..indices.ordinal import (
     GroupLexCelRelation,
     LexCelRelation,
+    compute_borda_interaction,
     compute_group_lex_cel,
     compute_group_ordinal_banzhaf_scores,
     compute_lex_cel,
@@ -103,6 +104,7 @@ def run_from_config(config_path: Path) -> None:
     interactions_enabled = interactions_cfg.get("enabled", False)
     shapley_interactions_enabled = interactions_cfg.get("shapley", True)
     banzhaf_interactions_enabled = interactions_cfg.get("banzhaf", True)
+    borda_interactions_enabled = interactions_cfg.get("borda", False)
     group_ordinal_interactions_enabled = interactions_cfg.get(
         "group_ordinal_banzhaf",
         False,
@@ -223,6 +225,11 @@ def run_from_config(config_path: Path) -> None:
                 if banzhaf_interactions_enabled
                 else {}
             )
+            borda_int = (
+                compute_borda_interaction(game)
+                if borda_interactions_enabled
+                else {}
+            )
             group_ord = (
                 compute_group_ordinal_banzhaf_scores(game)
                 if group_ordinal_interactions_enabled
@@ -253,6 +260,7 @@ def run_from_config(config_path: Path) -> None:
             all_coalitions = (
                 set(shap_int.keys())
                 | set(banz_int.keys())
+                | set(borda_int.keys())
                 | set(group_ord.keys())
                 | (set(group_lex_theta.keys()) if group_lex_theta else set())
             )
@@ -277,6 +285,7 @@ def run_from_config(config_path: Path) -> None:
                         "size": len(coalition),
                         "shapley_interaction": shap_int.get(coalition),
                         "banzhaf_interaction": banz_int.get(coalition),
+                        "borda_interaction": borda_int.get(coalition),
                         "group_ordinal_banzhaf_score": group_ord.get(coalition),
                         "group_lexcel_theta": theta_str,
                         "group_lexcel_rank": rank_val,
@@ -293,6 +302,10 @@ def run_from_config(config_path: Path) -> None:
             if banz_int:
                 all_rules["banzhaf_interaction"] = {
                     c: float(v) for c, v in banz_int.items()
+                }
+            if borda_int:
+                all_rules["borda_interaction"] = {
+                    c: float(v) for c, v in borda_int.items()
                 }
             if group_ord:
                 all_rules["group_ordinal_banzhaf_score"] = {

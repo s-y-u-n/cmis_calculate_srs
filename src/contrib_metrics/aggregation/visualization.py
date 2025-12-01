@@ -118,6 +118,7 @@ def plot_coalitions(df: pd.DataFrame, out_dir: Path, title_prefix: str = "") -> 
 
     _bar_plot("shapley_interaction", "coalitions_shapley_interaction.png", "Shapley interaction")
     _bar_plot("banzhaf_interaction", "coalitions_banzhaf_interaction.png", "Banzhaf interaction")
+    _bar_plot("borda_interaction", "coalitions_borda_interaction.png", "Borda interaction")
     _bar_plot(
         "group_ordinal_banzhaf_score",
         "coalitions_group_ordinal_banzhaf_score.png",
@@ -193,6 +194,7 @@ def plot_interaction_heatmap(
         candidates = [
             "shapley_interaction",
             "banzhaf_interaction",
+            "borda_interaction",
             "group_ordinal_banzhaf_score",
             "group_lexcel_rank",
         ]

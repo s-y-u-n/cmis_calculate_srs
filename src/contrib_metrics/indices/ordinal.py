@@ -378,3 +378,71 @@ def compute_group_lex_cel(
         P=frozenset(P),
         I=frozenset(I),
     )
+
+
+def compute_borda_scores(game: Game) -> Dict[Coalition, int]:
+    """Borda scores s_≽(S) for each coalition S based on the coalition ranking.
+
+    We use the quotient ranking (layers Σ_1 ≻ ... ≻ Σ_ℓ) induced by game.ranks
+    and assign the same Borda score to all coalitions in the same layer:
+
+        score(Σ_k) = |{layers below Σ_k}| - |{layers above Σ_k}|
+                    = (ℓ - k) - (k - 1) = ℓ - 2k + 1
+
+    where smaller ranks are better (rank=1 is the top layer).
+    """
+    if game.ranks is None:
+        msg = "Game.ranks must be defined for Borda scores."
+        raise ValueError(msg)
+
+    ranks = game.ranks
+    # Sorted distinct rank values; each value corresponds to one layer Σ_k.
+    layer_values = sorted({r for r in ranks.values()})
+    ell = len(layer_values)
+
+    # Map each rank value to its layer index k (1-based) and corresponding score.
+    value_to_index = {v: idx + 1 for idx, v in enumerate(layer_values)}
+    value_to_score = {
+        v: ell - 2 * k + 1 for v, k in value_to_index.items()
+    }
+
+    scores: Dict[Coalition, int] = {}
+    for coalition, r in ranks.items():
+        scores[coalition] = value_to_score[r]
+
+    return scores
+
+
+def compute_borda_interaction(game: Game) -> Dict[Coalition, float]:
+    """Borda–Interaction Δ^{Borda}_≽(i,j) on two–person coalitions.
+
+    For each unordered pair {i,j}, we define
+
+        Δ^{Borda}_≽(i,j) = s_≽({i,j}) - (s_≽({i}) + s_≽({j})) / 2,
+
+    where s_≽(·) is the Borda score over coalitions induced by game.ranks.
+    The result is defined only for pairs {i,j} such that
+    {i}, {j}, {i,j} all appear in the ranking domain.
+    """
+    scores = compute_borda_scores(game)
+    players = sorted(game.players)
+
+    from itertools import combinations
+
+    result: Dict[Coalition, float] = {}
+    for i, j in combinations(players, 2):
+        single_i = frozenset({i})
+        single_j = frozenset({j})
+        pair = frozenset({i, j})
+
+        if (
+            single_i not in scores
+            or single_j not in scores
+            or pair not in scores
+        ):
+            continue
+
+        delta = scores[pair] - 0.5 * (scores[single_i] + scores[single_j])
+        result[pair] = float(delta)
+
+    return result
